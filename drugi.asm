@@ -92,9 +92,5 @@ koniec_wiersza:
 
 rozkazy ENDS
 
-nasz_stos SEGMENT stack 	; segment stosu
-dw 128 dup (?)
-nasz_stos ENDS
-
 END wystartuj 			; wykonanie programu zacznie się od rozkazu
 				; opatrzonego etykietą wystartuj
