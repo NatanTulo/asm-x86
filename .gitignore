@@ -1,0 +1,5 @@
+*.exe
+*.lst
+*.obj
+CLRFILE.CV4
+CURRENT.STS
