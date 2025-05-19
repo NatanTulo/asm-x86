@@ -3,6 +3,8 @@
 dane SEGMENT 	; segment danych
 tablica db 'aqrstuvwxyzbcdefmnopijqrstuvwxyz$'  ; 32-znakowa tablica z małymi literami zakończona '$'
 nowa_linia db 13, 10, '$'                        ; sekwencja nowej linii
+komunikat db 'Oryginalna tablica: $'
+komunikat2 db 'Przeksztalcona tablica: $'
 dane ENDS
 
 rozkazy SEGMENT 'CODE' use16 	; segment zawierający rozkazy programu
@@ -34,10 +36,8 @@ zakoncz_program ENDP
 
 ; Podprogram wyświetlający tablicę z zamienionymi literami q-z na cyfry 0-9
 wyswietl_przeksztalcona PROC
-        mov dx, OFFSET tablica
-        
-        ; Przeprowadzamy przekształcenie
-        mov si, dx  ; adres tablicy do SI
+        push si      ; zachowaj rejestr SI
+        mov si, OFFSET tablica  ; adres tablicy do SI
         
 petla_przeksztalcenie:
         mov al, [si]        ; pobierz znak
@@ -56,12 +56,14 @@ petla_przeksztalcenie:
         mov [si], al        ; Zapisz przekształcony znak
         
 bez_zmian:
+        mov dl, [si]        ; pobierz znak (przekształcony lub nie) do DL
+        call wyswietl_znak  ; wyświetl znak używając podprogramu wyswietl_znak
+        
         inc si              ; przejdź do następnego znaku
         jmp petla_przeksztalcenie
         
 koniec_przeksztalcenia:
-        ; Wyświetl przekształconą tablicę
-        call wyswietl_ciag
+        pop si              ; przywróć rejestr SI
         ret
 wyswietl_przeksztalcona ENDP
 
@@ -69,8 +71,23 @@ wystartuj:
         mov ax, SEG dane
         mov ds, ax
         
-        ; Wyświetl przekształconą tablicę
+        ; Wyświetl komunikat "Oryginalna tablica: "
+        mov dx, OFFSET komunikat
+        call wyswietl_ciag
+        
+        ; Wyświetl oryginalną tablicę
         mov dx, OFFSET tablica
+        call wyswietl_ciag
+        
+        ; Wyświetl nową linię
+        mov dx, OFFSET nowa_linia
+        call wyswietl_ciag
+        
+        ; Wyświetl komunikat "Przeksztalcona tablica: "
+        mov dx, OFFSET komunikat2
+        call wyswietl_ciag
+        
+        ; Przekształć tablicę i wyświetl ją jednocześnie
         call wyswietl_przeksztalcona
         
         ; Wyświetl nową linię
