@@ -1,5 +1,4 @@
 ;Zadanie 5 - Filtr FIR (Finite Impulse Response)
-;Procesor 16-bitowy
 
 dane SEGMENT
     we dw 64 dup (?) ; tablica wejsciowa 64 liczb typu WORD
@@ -13,7 +12,7 @@ dane SEGMENT
     NL db 13, 10, '$'
     
     ; Zmienne pomocnicze do generowania liczb losowych
-    seed dw 1234h    ; ziarno generatora
+    seed dw ?        ; ziarno generatora - będzie ustawione z czasu systemowego
     
 dane ENDS
 
@@ -24,6 +23,9 @@ startuj:
     mov ax, SEG dane
     mov ds, ax
     mov es, ax
+    
+    ; Inicjalizacja ziarna generatora na podstawie czasu systemowego
+    call InicjalizujZiarno
     
     ; Wypelnienie tablicy we liczbami losowymi <= 7Fh
     call WypelnijTablice
@@ -69,7 +71,60 @@ startuj:
     call Koniec
 
 ;*****************************************************
+; Podprogram inicjalizujący ziarno generatora na podstawie czasu systemowego
+;*****************************************************
+InicjalizujZiarno PROC near
+    push ax
+    push cx
+    push dx
+    
+    ; Pobranie czasu systemowego (INT 21h, AH=2Ch)
+    mov ah, 2Ch        ; funkcja pobierania czasu
+    int 21h
+    ; Wynik: CH=godzina, CL=minuta, DH=sekunda, DL=setna część sekundy
+    
+    ; Tworzenie ziarna z kombinacji różnych składników czasu
+    mov al, ch         ; godzina
+    mov ah, cl         ; minuta
+    ; AX = (godzina << 8) | minuta
+    
+    push ax            ; zachowaj pierwszą część
+    mov al, dh         ; sekunda
+    mov ah, dl         ; setna część sekundy
+    ; AX = (sekunda << 8) | setna_część
+    
+    pop dx             ; przywróć pierwszą część do DX
+    xor ax, dx         ; XOR dwóch części czasu dla lepszej losowości
+    
+    ; Dodatkowe mieszanie bitów - rotacja o 3 bity
+    push cx            ; zachowaj cx
+    mov cl, 3          ; liczba bitów do rotacji
+    rol ax, cl         ; rotacja o 3 bity w lewo
+    pop cx             ; przywróć cx
+    
+    xor ax, 5A5Ah      ; XOR z stałą dla dodatkowej losowości
+    
+    mov seed, ax       ; zapisanie ziarna
+    
+    pop dx
+    pop cx
+    pop ax
+    ret
+InicjalizujZiarno ENDP
+
+;*****************************************************
 ; Podprogram wypelniajacy tablice liczbami losowymi <= 7Fh
+; 
+; Generator używa algorytmu Linear Congruential Generator (LCG):
+; X(n+1) = (a * X(n) + c) mod m
+; gdzie:
+; a = 25173 (mnożnik)
+; c = 13849 (przyrost) 
+; m = 65536 (moduł - niejawny przez przepełnienie 16-bitowego rejestru)
+; X(n) = seed (aktualne ziarno)
+; X(n+1) = nowe ziarno
+;
+; Następnie wynik jest ograniczany do zakresu 0-127 przez: wynik AND 7Fh
 ;*****************************************************
 WypelnijTablice PROC near
     push cx
@@ -81,18 +136,18 @@ WypelnijTablice PROC near
     mov si, 0              ; indeks w tablicy
     
 wypelnij_petla:
-    ; Prosty generator liczb pseudolosowych
-    mov ax, seed
-    mov dx, 25173          ; mnoznik
-    mul dx
-    add ax, 13849          ; przyrost
-    mov seed, ax           ; nowe ziarno
+    ; Implementacja wzoru LCG: X(n+1) = (25173 * X(n) + 13849) mod 65536
+    mov ax, seed           ; X(n) - aktualne ziarno
+    mov dx, 25173          ; a = 25173 (mnożnik)
+    mul dx                 ; AX = 25173 * X(n)
+    add ax, 13849          ; AX = 25173 * X(n) + 13849 (mod 65536 przez przepełnienie)
+    mov seed, ax           ; X(n+1) = nowe ziarno
     
-    ; Ograniczenie do zakresu <= 7Fh (127)
-    and ax, 7Fh            ; maska dla 7 bitow
+    ; Ograniczenie do zakresu <= 7Fh (0-127): wynik = X(n+1) AND 01111111b
+    and ax, 7Fh            ; maska dla 7 bitów (0-127)
     
     mov word ptr we[si], ax
-    add si, 2              ; przejscie do nastepnego elementu (WORD = 2 bajty)
+    add si, 2              ; przejście do następnego elementu (WORD = 2 bajty)
     loop wypelnij_petla
     
     pop si
