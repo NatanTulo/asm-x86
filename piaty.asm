@@ -142,37 +142,47 @@ filtr_petla:
     cmp bx, 64             ; sprawdz czy nie przekroczylismy 64 elementow
     jge koniec_filtra
     
-    ; Oblicz indeks w bajtach (bx * 2)
-    push bx
-    shl bx, 1              ; bx = bx * 2 (indeks w bajtach)
+    ; Oblicz indeks w bajtach (bx * 2) - używamy bx jako indeks
+    push bx                ; zachowaj oryginalny bx
+    shl bx, 1              ; bx = indeks w bajtach
     
     ; Obliczenie 125 * xi-1
     mov ax, word ptr [si+bx-2]  ; xi-1
-    mov cx, 125
-    mul cx                      ; AX = 125 * xi-1 (zakładamy brak przepełnienia)
-    mov dx, ax                  ; zachowaj pierwszy składnik
+    push bx                     ; zachowaj indeks
+    mov bx, 125
+    mul bx                      ; AX = 125 * xi-1
+    pop bx                      ; przywróć indeks
+    push ax                     ; zachowaj pierwszy składnik
     
     ; Obliczenie 62 * xi-2
     mov ax, word ptr [si+bx-4]  ; xi-2
-    mov cx, 62
-    mul cx                      ; AX = 62 * xi-2
-    add dx, ax                  ; dodaj do sumy
+    push bx                     ; zachowaj indeks
+    mov bx, 62
+    mul bx                      ; AX = 62 * xi-2
+    pop bx                      ; przywróć indeks
+    pop dx                      ; przywróć pierwszy składnik do dx
+    add ax, dx                  ; dodaj do sumy
+    push ax                     ; zachowaj sumę dwóch pierwszych składników
     
     ; Obliczenie 27 * xi-3
     mov ax, word ptr [si+bx-6]  ; xi-3
-    mov cx, 27
-    mul cx                      ; AX = 27 * xi-3
-    add dx, ax                  ; dodaj do sumy
+    push bx                     ; zachowaj indeks
+    mov bx, 27
+    mul bx                      ; AX = 27 * xi-3
+    pop bx                      ; przywróć indeks
+    pop dx                      ; przywróć sumę dwóch pierwszych składników
+    add ax, dx                  ; dodaj do całkowitej sumy
     
     ; Dzielenie sumy przez 256 (przesuniecie o 8 bitow w prawo)
-    mov ax, dx
+    push cx                     ; zachowaj cx
     mov cl, 8
     shr ax, cl                  ; ax = ax / 256
+    pop cx                      ; przywróć cx
     
     ; Zapisanie wyniku
     mov word ptr [di+bx], ax
     
-    pop bx                      ; przywroc licznik elementow
+    pop bx                      ; przywróć oryginalny bx (licznik elementów)
     inc bx                      ; nastepny element
     jmp filtr_petla
     
