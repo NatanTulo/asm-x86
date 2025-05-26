@@ -72,6 +72,26 @@ startuj:
 
 ;*****************************************************
 ; Podprogram inicjalizujący ziarno generatora na podstawie czasu systemowego
+;
+; Wzór na ziarno:
+; seed = ROL(((H << 8) | M) XOR ((s << 8) | cs), 3) XOR 5A5Ah
+; gdzie:
+; H  = godzina (0-23)
+; M  = minuta (0-59)
+; s  = sekunda (0-59)
+; cs = setna część sekundy (0-99)
+; ROL(x,3) = rotacja bitowa w lewo o 3 pozycje
+; XOR = operacja logiczna "lub wyłączające"
+; << = przesunięcie bitowe w lewo
+; | = operacja logiczna "lub"
+; 5A5Ah = stała hexadecymalna (binarne: 0101101001011010)
+;
+; Przykład dla czasu 14:25:37.45:
+; część1 = (25 << 8) | 14 = 6414h
+; część2 = (45 << 8) | 37 = 2D25h
+; temp = 6414h XOR 2D25h = 4931h
+; po_rotacji = ROL(4931h, 3) = 248Bh
+; seed = 248Bh XOR 5A5Ah = 7ED1h
 ;*****************************************************
 InicjalizujZiarno PROC near
     push ax
