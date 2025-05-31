@@ -1,268 +1,206 @@
-;Zadanie 5 - Filtr FIR (Finite Impulse Response)
+;zad5 - przetwarzanie tablicy za pomoc filtru FIR i wywietlanie liczb
 
 dane SEGMENT
-    we dw 64 dup (?) ; tablica wejsciowa 64 liczb typu WORD
-    wy dw 64 dup (?) ; tablica wynikow 64 liczb typu WORD
-    rozmiar dw 64    ; rozmiar tablic
+    WE          dw 64 dup(?)    ; Tablica wejciowa
+    WY          dw 64 dup(?)    ; Tablica wynikowa
+    DLUGOSC     equ 64          ; Dugo tablic
     
-    ; Komunikaty do wyswietlania
-    msg_we db 'Tablica wejsciowa WE (hex):', 13, 10, '$'
-    msg_wy db 13, 10, 'Tablica wynikow WY (hex):', 13, 10, '$'
-    spacja db ' $'
-    NL db 13, 10, '$'
+    COEFF1      dw 125          ; Wspczynnik filtra
+    COEFF2      dw 62           ; Wspczynnik filtra
+    COEFF3      dw 27           ; Wspczynnik filtra
+    DIVISOR_CONST equ 256       ; Dzielnik filtra
     
-    ; Zmienne pomocnicze do generowania liczb losowych
-    seed dw ?        ; ziarno generatora - będzie ustawione z czasu systemowego
-    
+    random_seed dw 12345        ; Ziarno generatora liczb pseudolosowych
+
+    Buf_1       db 6 dup('$')   ; Bufor dla konwersji liczby na string (5 cyfr + '$')
+    NL          db 13, 10, '$'
+    MsgWE       db 'Tablica we:', 13, 10, '$'
+    MsgWY       db 'Tablica wy:', 13, 10, '$'
+    Separator   db ' ', '$'     ; Separator midzy liczbami
 dane ENDS
 
-rozkazy SEGMENT 'CODE' use16
-    ASSUME cs:rozkazy, ds:dane
+rozkazy SEGMENT 'CODE' use16 ;segment rozkazu
+	ASSUME cs:rozkazy, ds:dane
 
 startuj:
-    mov ax, SEG dane
-    mov ds, ax
-    mov es, ax
-    
-    ; Inicjalizacja ziarna generatora na podstawie czasu systemowego
-    call InicjalizujZiarno
-    
-    ; Wypelnienie tablicy we liczbami losowymi <= 7Fh
-    call WypelnijTablice
-    
-    ; Wyswietlenie tablicy wejsciowej
-    mov dx, offset msg_we
-    mov ah, 9
-    int 21h
-    
-    mov ax, offset we
-    push ax                ; offset tablicy we
-    mov ax, rozmiar
-    push ax                ; rozmiar tablicy
-    call WyswietlTablice
-    pop ax                 ; czyszczenie stosu
-    pop ax
-    
-    ; Wywolanie podprogramu filtrujacego
-    mov ax, offset we      ; offset tablicy wejsciowej
-    push ax
-    mov ax, offset wy      ; offset tablicy wynikow
-    push ax
-    mov ax, rozmiar        ; rozmiar tablic
-    push ax
+	mov ax, SEG dane
+	mov ds, ax	
+	mov es, ax	; przypisanie segmentu danych do rejestru es 
+
+    ; 1. Wypenij tablic WE liczbami pseudolosowymi <= 7Fh
+    call WypelnijWE
+
+    ; 2. Wywoaj podprogram filtrujcy
+    mov ax, offset WE
+    push ax             ; Parametr 1: offset tablicy WE
+    mov ax, offset WY
+    push ax             ; Parametr 2: offset tablicy WY
+    mov ax, DLUGOSC
+    push ax             ; Parametr 3: dugo tablic
     call FiltrFIR
-    pop ax                 ; czyszczenie stosu
-    pop ax
-    pop ax
-    
-    ; Wyswietlenie tablicy wynikow
-    mov dx, offset msg_wy
-    mov ah, 9
+    add sp, 6           ; Usu parametry ze stosu (3 parametry * 2 bajty)
+
+    ; 3. Wywietl tablic WE
+    mov dx, offset MsgWE
+    mov ah, 09h
     int 21h
-    
-    mov ax, offset wy
-    push ax                ; offset tablicy wy
-    mov ax, rozmiar
-    push ax                ; rozmiar tablicy
+    mov ax, offset WE
+    push ax             ; Parametr 1: offset tablicy
+    mov ax, DLUGOSC
+    push ax             ; Parametr 2: dugo
     call WyswietlTablice
-    pop ax                 ; czyszczenie stosu
-    pop ax
-    
-    call Koniec
+    add sp, 4           ; Usu parametry ze stosu
 
-;*****************************************************
-; Podprogram inicjalizujący ziarno generatora na podstawie czasu systemowego
-;
-; Wzór na ziarno:
-; seed = ROL(((H << 8) | M) XOR ((s << 8) | cs), 3) XOR 5A5Ah
-; gdzie:
-; H  = godzina (0-23)
-; M  = minuta (0-59)
-; s  = sekunda (0-59)
-; cs = setna część sekundy (0-99)
-; ROL(x,3) = rotacja bitowa w lewo o 3 pozycje
-; XOR = operacja logiczna "lub wyłączające"
-; << = przesunięcie bitowe w lewo
-; | = operacja logiczna "lub"
-; 5A5Ah = stała hexadecymalna (binarne: 0101101001011010)
-;
-; Przykład dla czasu 14:25:37.45:
-; część1 = (25 << 8) | 14 = 6414h
-; część2 = (45 << 8) | 37 = 2D25h
-; temp = 6414h XOR 2D25h = 4931h
-; po_rotacji = ROL(4931h, 3) = 248Bh
-; seed = 248Bh XOR 5A5Ah = 7ED1h
-;*****************************************************
-InicjalizujZiarno PROC near
-    push ax
-    push cx
-    push dx
-    
-    ; Pobranie czasu systemowego (INT 21h, AH=2Ch)
-    mov ah, 2Ch        ; funkcja pobierania czasu
+    call NowaLinia
+
+    ; 4. Wywietl tablic WY
+    mov dx, offset MsgWY
+    mov ah, 09h
     int 21h
-    ; Wynik: CH=godzina, CL=minuta, DH=sekunda, DL=setna część sekundy
-    
-    ; Tworzenie ziarna z kombinacji różnych składników czasu
-    mov al, ch         ; godzina
-    mov ah, cl         ; minuta
-    ; AX = (godzina << 8) | minuta
-    
-    push ax            ; zachowaj pierwszą część
-    mov al, dh         ; sekunda
-    mov ah, dl         ; setna część sekundy
-    ; AX = (sekunda << 8) | setna_część
-    
-    pop dx             ; przywróć pierwszą część do DX
-    xor ax, dx         ; XOR dwóch części czasu dla lepszej losowości
-    
-    ; Dodatkowe mieszanie bitów - rotacja o 3 bity
-    push cx            ; zachowaj cx
-    mov cl, 3          ; liczba bitów do rotacji
-    rol ax, cl         ; rotacja o 3 bity w lewo
-    pop cx             ; przywróć cx
-    
-    xor ax, 5A5Ah      ; XOR z stałą dla dodatkowej losowości
-    
-    mov seed, ax       ; zapisanie ziarna
-    
-    pop dx
-    pop cx
-    pop ax
-    ret
-InicjalizujZiarno ENDP
+    mov ax, offset WY
+    push ax             ; Parametr 1: offset tablicy
+    mov ax, DLUGOSC
+    push ax             ; Parametr 2: dugo
+    call WyswietlTablice
+    add sp, 4           ; Usu parametry ze stosu
 
-;*****************************************************
-; Podprogram wypelniajacy tablice liczbami losowymi <= 7Fh
-; 
-; Generator używa algorytmu Linear Congruential Generator (LCG):
-; X(n+1) = (a * X(n) + c) mod m
-; gdzie:
-; a = 25173 (mnożnik)
-; c = 13849 (przyrost) 
-; m = 65536 (moduł - niejawny przez przepełnienie 16-bitowego rejestru)
-; X(n) = seed (aktualne ziarno)
-; X(n+1) = nowe ziarno
-;
-; Następnie wynik jest ograniczany do zakresu 0-127 przez: wynik AND 7Fh
-;*****************************************************
-WypelnijTablice PROC near
+	call koniec
+
+;***********************************************************
+; Podprogram do wypeniania tablicy WE liczbami pseudolosowymi
+;***********************************************************
+WypelnijWE PROC near
+    push ax ; Zapisz uywane rejestry
     push cx
-    push bx
-    push dx
     push si
     
-    mov cx, 64             ; liczba elementow
-    mov si, 0              ; indeks w tablicy
+    mov cx, DLUGOSC
+    mov si, offset WE
+petla_wypelniania:
+    call GenerujLosowa ; Wynik w AX (0-7Fh)
+    mov [si], ax
+    add si, 2 ; Nastpny WORD
+    loop petla_wypelniania
     
-wypelnij_petla:
-    ; Implementacja wzoru LCG: X(n+1) = (25173 * X(n) + 13849) mod 65536
-    mov ax, seed           ; X(n) - aktualne ziarno
-    mov dx, 25173          ; a = 25173 (mnożnik)
-    mul dx                 ; AX = 25173 * X(n)
-    add ax, 13849          ; AX = 25173 * X(n) + 13849 (mod 65536 przez przepełnienie)
-    mov seed, ax           ; X(n+1) = nowe ziarno
-    
-    ; Ograniczenie do zakresu <= 7Fh (0-127): wynik = X(n+1) AND 01111111b
-    and ax, 7Fh            ; maska dla 7 bitów (0-127)
-    
-    mov word ptr we[si], ax
-    add si, 2              ; przejście do następnego elementu (WORD = 2 bajty)
-    loop wypelnij_petla
-    
-    pop si
-    pop dx
+    pop si  ; Odtwrz rejestry
+    pop cx
+    pop ax
+    ret
+WypelnijWE ENDP
+
+;***********************************************************
+; Prosty generator liczb pseudolosowych (LCG)
+; Wynik (0-7Fh) w AX
+;***********************************************************
+GenerujLosowa PROC near
+    push dx
+    push cx
+    push bx
+    ; seed = (a * seed + c) mod m
+    ; a = 25173, c = 13849, m = 65536 (WORD overflow)
+    mov ax, 25173
+    mul random_seed ; DX:AX = ax * random_seed
+    add ax, 13849   ; Dodaj c
+    mov random_seed, ax ; Zapisz nowe ziarno
+
+    ; Redukcja do zakresu 0-7Fh
+    and ax, 007Fh ; ax = ax AND 0000 0000 0111 1111b
     pop bx
     pop cx
+    pop dx
     ret
-WypelnijTablice ENDP
+GenerujLosowa ENDP
 
-;*****************************************************
-; Podprogram filtrujacy FIR
-; Parametry na stosie (po wykonaniu PUSH BP; MOV BP, SP):
-; [bp+8] - offset tablicy we (pierwszy parametr odłożony na stos)
-; [bp+6] - offset tablicy wy (drugi parametr odłożony na stos)
-; [bp+4] - rozmiar tablic (trzeci, ostatni parametr odłożony na stos)
-;*****************************************************
+;***********************************************************
+; Podprogram filtrujcy FIR
+; Parametry na stosie: 
+; [bp+8] - offset WE
+; [bp+6] - offset WY
+; [bp+4] - dugo
+;***********************************************************
 FiltrFIR PROC near
     push bp
     mov bp, sp
-    push ax
+    push ax ; Zapisz uywane rejestry
     push bx
     push cx
     push dx
     push si
     push di
+
+    mov si, [bp+8] ; Adres WE
+    mov di, [bp+6] ; Adres WY
+    mov cx, [bp+4] ; Dugo
+
+    ; Kopiowanie pierwszych elementw (do 3), jeli dugo na to pozwala
+    cmp cx, 1
+    jl koniec_filtrowania_za_krotka
+    mov ax, [si]    ; we[0]
+    mov [di], ax    ; wy[0] = we[0]
+
+    cmp cx, 2
+    jl koniec_filtrowania_za_krotka
+    mov ax, [si+2]  ; we[1]
+    mov [di+2], ax  ; wy[1] = we[1]
+
+    cmp cx, 3
+    jl koniec_filtrowania_za_krotka
+    mov ax, [si+4]  ; we[2]
+    mov [di+4], ax  ; wy[2] = we[2]
+
+    ; Sprawdzenie, czy s elementy do filtrowania (i >= 3)
+    cmp cx, 3 
+    jle koniec_filtrowania_za_krotka ; Jeli dugo <=3, to ju wszystko zrobione
+
+    ; Ptla dla i = 3 do dugo-1
+    add si, 6 ; Ustaw si na we[3]
+    add di, 6 ; Ustaw di na wy[3]
+    sub cx, 3 ; Liczba pozostaych elementw do przetworzenia
+
+petla_filtru:
+    ; Adresy: we[i-1] -> [si-2], we[i-2] -> [si-4], we[i-3] -> [si-6]
     
-    mov si, [bp+8]         ; odczyt offsetu tablicy we
-    mov di, [bp+6]         ; odczyt offsetu tablicy wy
-    mov cx, [bp+4]         ; odczyt rozmiaru tablic
-    
-    ; Kopiowanie pierwszych trzech elementow bez zmian
-    ; wy0 = x0, wy1 = x1, wy2 = x2
-    mov ax, word ptr [si]     ; we[0]
-    mov word ptr [di], ax     ; wy[0] = we[0]
-    
-    mov ax, word ptr [si+2]   ; we[1]
-    mov word ptr [di+2], ax   ; wy[1] = we[1]
-    
-    mov ax, word ptr [si+4]   ; we[2]
-    mov word ptr [di+4], ax   ; wy[2] = we[2]
-    
-    ; Filtrowanie dla i = 3, ..., 63
-    ; wyi = (125*xi-1)/256 + (62*xi-2)/256 + (27*xi-3)/256
-    mov bx, 3              ; licznik elementow od 3 do 63
-    
-filtr_petla:
-    cmp bx, 64             ; sprawdz czy nie przekroczylismy 64 elementow
-    jge koniec_filtra
-    
-    ; Oblicz indeks w bajtach (bx * 2) - używamy bx jako indeks
-    push bx                ; zachowaj oryginalny bx
-    shl bx, 1              ; bx = indeks w bajtach
-    
-    ; Obliczenie 125 * xi-1
-    mov ax, word ptr [si+bx-2]  ; xi-1
-    push bx                     ; zachowaj indeks
-    mov bx, 125
-    mul bx                      ; AX = 125 * xi-1
-    pop bx                      ; przywróć indeks
-    push ax                     ; zachowaj pierwszy składnik
-    
-    ; Obliczenie 62 * xi-2
-    mov ax, word ptr [si+bx-4]  ; xi-2
-    push bx                     ; zachowaj indeks
-    mov bx, 62
-    mul bx                      ; AX = 62 * xi-2
-    pop bx                      ; przywróć indeks
-    pop dx                      ; przywróć pierwszy składnik do dx
-    add ax, dx                  ; dodaj do sumy
-    push ax                     ; zachowaj sumę dwóch pierwszych składników
-    
-    ; Obliczenie 27 * xi-3
-    mov ax, word ptr [si+bx-6]  ; xi-3
-    push bx                     ; zachowaj indeks
-    mov bx, 27
-    mul bx                      ; AX = 27 * xi-3
-    pop bx                      ; przywróć indeks
-    pop dx                      ; przywróć sumę dwóch pierwszych składników
-    add ax, dx                  ; dodaj do całkowitej sumy
-    
-    ; Dzielenie sumy przez 256 (przesuniecie o 8 bitow w prawo)
-    push cx                     ; zachowaj cx
-    mov cl, 8
-    shr ax, cl                  ; ax = ax / 256
-    pop cx                      ; przywróć cx
-    
-    ; Zapisanie wyniku
-    mov word ptr [di+bx], ax
-    
-    pop bx                      ; przywróć oryginalny bx (licznik elementów)
-    inc bx                      ; nastepny element
-    jmp filtr_petla
-    
-koniec_filtra:
-    pop di
+    xor bx, bx ; bx bdzie sum wy[i]
+
+    ; term1 = (125 * we[i-1]) / 256
+    mov ax, COEFF1
+    mul word ptr [si-2] ; we[i-1]. Wynik w DX:AX.
+    ; Poniewa max we[i-1] to 7Fh (127) i COEFF1 to 125,
+    ; 125 * 127 = 15875. To mieci si w AX, wic DX bdzie 0.
+    ; Dla pewnoci moemy wyzerowa DX, chocia mul word ptr to zrobi.
+    ; xor dx, dx ; Nie jest to konieczne, bo mul word ptr [si-2] ustawi DX:AX
+    push cx             ; Zachowaj licznik ptli CX
+    mov cx, DIVISOR_CONST ; Zaaduj dzielnik do CX
+    div cx              ; AX = (DX:AX) / CX. Reszta w DX.
+    pop cx              ; Przywr licznik ptli CX
+    add bx, ax          ; Dodaj (term1/DIVISOR_CONST) do sumy
+
+    ; term2 = (62 * we[i-2]) / 256
+    mov ax, COEFF2
+    mul word ptr [si-4] ; we[i-2]. Wynik w DX:AX. (DX bdzie 0)
+    push cx
+    mov cx, DIVISOR_CONST
+    div cx
+    pop cx
+    add bx, ax
+
+    ; term3 = (27 * we[i-3]) / 256
+    mov ax, COEFF3
+    mul word ptr [si-6] ; we[i-3]. Wynik w DX:AX. (DX bdzie 0)
+    push cx
+    mov cx, DIVISOR_CONST
+    div cx
+    pop cx
+    add bx, ax
+
+    mov [di], bx   ; wy[i] = wynik
+
+    add si, 2 ; Nastpny element we
+    add di, 2 ; Nastpny element wy
+    loop petla_filtru
+
+koniec_filtrowania_za_krotka:
+    pop di  ; Odtwrz rejestry
     pop si
     pop dx
     pop cx
@@ -272,58 +210,56 @@ koniec_filtra:
     ret
 FiltrFIR ENDP
 
-;*****************************************************
-; Podprogram wyswietlajacy tablice w systemie szesnastkowym
-; Parametry na stosie: [bp+6] - offset tablicy
-;                      [bp+4] - rozmiar tablicy
-;*****************************************************
+;***********************************************************
+; Podprogram do wywietlania tablicy liczb dziesitnych
+; Parametry na stosie: 
+; [bp+6] - offset tablicy
+; [bp+4] - dugo
+;***********************************************************
 WyswietlTablice PROC near
     push bp
     mov bp, sp
-    push ax
+    push ax ; Zapisz uywane rejestry
     push bx
     push cx
     push dx
     push si
+
+    mov cx, [bp+4] ; Dugo
+    mov si, [bp+6] ; Adres tablicy
+    mov bx, 0      ; Licznik elementw w linii (dla formatowania)
+
+petla_wyswietlania:
+    push cx        ; Zachowaj licznik ptli gwnej
     
-    mov si, [bp+6]         ; offset tablicy
-    mov cx, [bp+4]         ; rozmiar tablicy
-    mov bx, 0              ; indeks
-    
-wyswietl_petla:
-    mov ax, word ptr [si+bx]
-    call WyswietlHex
-    
-    ; Wyswietlenie spacji
-    mov dx, offset spacja
-    mov ah, 9
+    mov ax, [si]   ; Liczba do wywietlenia
+    call WyswLiczbe10_mod ; Wywietla liczb z AX
+
+    ; Wywietl separator
+    push dx
+    mov dx, offset Separator
+    mov ah, 09h
     int 21h
-    
-    add bx, 2              ; nastepny element
-    
-    ; Co 8 elementow nowa linia
-    push ax
-    mov ax, bx
-    shr ax, 1              ; dzielenie przez 2 (bo WORD = 2 bajty)
-    mov dx, 0
-    mov di, 8
-    div di
-    cmp dx, 0
-    jne nie_nowa_linia
-    
-    mov dx, offset NL
-    mov ah, 9
-    int 21h
-    
-nie_nowa_linia:
-    pop ax
-    loop wyswietl_petla
-    
-    mov dx, offset NL
-    mov ah, 9
-    int 21h
-    
-    pop si
+    pop dx
+
+    inc bx
+    cmp bx, 16 ; Wywietl 16 liczb w linii
+    jne nie_nowa_linia_wysw
+    call NowaLinia
+    mov bx, 0
+nie_nowa_linia_wysw:
+
+    add si, 2
+    pop cx
+    loop petla_wyswietlania
+
+    ; Jeli ostatnia linia nie bya pena i nie bya pusta, dodaj NowaLinia
+    cmp bx, 0
+    je koniec_wyswietlania_tab
+    call NowaLinia
+
+koniec_wyswietlania_tab:
+    pop si  ; Odtwrz rejestry
     pop dx
     pop cx
     pop bx
@@ -332,59 +268,140 @@ nie_nowa_linia:
     ret
 WyswietlTablice ENDP
 
-;*****************************************************
-; Podprogram wyswietlajacy liczbe w systemie szesnastkowym
-; Wejscie: ax - liczba do wyswietlenia
-;*****************************************************
-WyswietlHex PROC near
-    push ax
+;***********************************************************
+; Podprogram WczyLiczbe10 (pozostawiony, ale nieuywany w gwnym przepywie)
+;***********************************************************
+WczyLiczbe10 PROC near
+	push bp
+	mov bp, sp
+	push cx	;zapisanie na stosie wszystkich rejestrw uywanych przez podprogram
+	push bx	;
+	push dx	;
+	push si	;
+
+	mov si, [bp]+6 ;wczytanie do rej. si offset'u zmiennej wyjciowej - pierwszy param. procedury
+	
+	mov ax, 0       	  ;wpisanie wartoci poczatkowej 0
+	mov word PTR [si], ax ;do zmiennej wyjciowej
+
+	mov cx, [bp]+4 ;liczba wczytywanych cyfr dziesitnych - drugi param. procedury
+czn: 
+	mov ah, 07H ;wczytanie z klawiatury do rej. AL znaku w kodzie ASCII
+	int 21H 	;bez wywietlania !!!
+	cmp al, 13
+	je jest_enter ;skok gdy nacisnieto klawisz Enter
+	sub al, 30H ;zamaiana kodu ASCII na wartosc cyfry
+	mov bl, al ;przechowanie kolejnej cyfry w rej. BL
+	mov bh, 0  ;zerowanie rejestru BH
+		   ;algorytm Hornera - wyznaczenie za pomoc cyfr liczby wejsciowej 
+		   ;(dziesi�tnej) jej wartoci binarnej	
+	mov ax, 10 ;mnoznik = 10 bo wczytujemy cyfry w kodzie dziesi�tnym
+	mul word PTR [si] 	;mnozenie dotychczas uzyskanego wyniku przez 10, 
+				        ;iloczyn zostaje wpisany do rejestrw DX:AX
+	add ax, bx 	        ;dodanie do wyniku mnoenia aktualnie wczytanej cyfry
+	mov word PTR [si], ax	;przesanie wyniku obliczenia do zmiennej wyjciowej
+	loop czn;
+	jmp dalej		;jeli wczytano wszystkie okrelone przez drugi param. podprogramu
+					;omijamy oczyszczenie bufora klawiatury ze znaku enter.
+
+jest_enter:
+	mov ah, 06H 	;Oczyszczenie bufora klawiatury ze znaku enter.  
+	mov dl, 255		;Zabieg ten jest niezbdny przy przetwarzaniu wsadowym, gdy  
+	int 21H 		;przekierowujemy do programu strumie danych w postaci pliku tekstowego  
+					;z liczbami oddzielonymi enterem (komenda:  piaty.exe < dane.txt). 
+					;- zabieg oczyszcenia bufora uzyskamy wstawiajc
+					;do rej. DL warto 255 i wywoujc funkcj 06H przerwania 21H. 
+dalej:	
+	pop si 	; przywrcenie wartoci poczatkowych wszystkich rejestrw 
+	pop dx	; uywanych przez podprogram
+	pop bx	; UWAGA! w odwrotnej kolejnoci ni byo w to komendach push!
+	pop cx	;
+
+	pop bp
+	ret
+WczyLiczbe10 ENDP
+
+;**************************
+; Zmodyfikowany WyswLiczbe10, ktry bierze liczb z AX
+; i uywa lokalnego bufora Buf_1
+;**************************
+WyswLiczbe10_mod PROC near
+    ; Liczba do wywietlenia jest w AX
+    push ax ; Zapisz uywane rejestry
     push bx
     push cx
-    push dx
-    
-    mov cx, 4              ; 4 cyfry hex dla WORD
-    
-hex_petla:
-    push cx                ; Zachowaj licznik pętli zewnętrznej
-    mov cl, 4              ; Liczba bitów do rotacji
-    rol ax, cl             ; Przesunięcie o 4 bity w lewo
-    pop cx                 ; Przywróć licznik pętli zewnętrznej
-    mov dx, ax
-    and dx, 0Fh            ; maska dla 4 bitow
-    
-    cmp dx, 9
-    jle cyfra
-    add dx, 7              ; dla A-F
-cyfra:
-    add dx, 30h            ; kod ASCII
-    
-    push ax
-    mov ah, 2
+    push dx ; Zapisz oryginalny DX (dx_outer)
+    push di ; Zapisz oryginalny DI (di_outer)
+
+    mov cx, 0       ; Licznik cyfr
+    mov di, offset Buf_1 + 5 ; Wskanik na koniec bufora (Buf_1 db 6 dup('$'))
+                            ; Buf_1[5] = '$', Buf_1[4] = ostatnia cyfra, itd.
+    mov byte ptr [di], '$' ; Terminator stringu
+    dec di
+
+    cmp ax, 0
+    jne konwersja_liczby_wysw
+    ; Specjalny przypadek dla liczby 0
+    mov byte ptr [di], '0'
+    dec di ; przesun DI aby wskazywalo na '0'
+    inc cx
+    jmp koniec_konwersji_wysw
+
+konwersja_liczby_wysw:
+    mov bx, 10      ; Dzielnik
+petla_dziel_wysw:
+    mov dx, 0       ; Wyzeruj DX przed dzieleniem DX:AX przez BX
+    div bx          ; AX = AX / 10, reszta w DX
+    add dl, '0'     ; Konwertuj reszt na cyfr ASCII
+    mov [di], dl    ; Zapisz cyfr w buforze
+    dec di
+    inc cx          ; Zwiksz licznik cyfr
+    cmp ax, 0       ; Czy iloraz jest zerem?
+    jne petla_dziel_wysw
+
+koniec_konwersji_wysw:
+    inc di ; Ustaw DI na poczatek liczby w buforze
+
+    ; Wywietl liczb z bufora
+    push dx ; Zachowaj DX (dx_inner - aktualna warto DX przed uzyciem go jako wskaźnika)
+    mov dx, di
+    mov ah, 09h
     int 21h
-    pop ax
-    
-    loop hex_petla
-    
-    pop dx
+    ; Poprawiona sekwencja zdejmowania rejestrów ze stosu:
+    pop dx  ; Odtwrz dx_inner do rejestru DX
+    pop di  ; Odtwrz di_outer
+    pop dx  ; Odtwrz dx_outer
     pop cx
     pop bx
     pop ax
     ret
-WyswietlHex ENDP
+WyswLiczbe10_mod ENDP
 
-;*****************************************************
-; Podprogram konczacy program
-;*****************************************************
-Koniec PROC near
-    mov al, 0
-    mov ah, 4Ch
-    int 21h
-Koniec ENDP
+;**************************
+
+NowaLinia PROC near
+	push dx
+	mov dx, offset NL
+	mov ah, 9 
+	int 21H
+	pop dx
+	ret
+NowaLinia ENDP
+
+;**************************
+
+koniec PROC near
+	mov al, 0
+	mov ah, 4CH
+	int 21H
+koniec ENDP
+
+;**************************
 
 rozkazy ENDS
 
-stosik SEGMENT stack
-    dw 128 dup(?)
-stosik ENDS
 
+stosik SEGMENT stack
+	dw 128 dup(?)
+stosik ENDS
 END startuj
