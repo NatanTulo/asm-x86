@@ -10,8 +10,6 @@ dane SEGMENT
     COEFF3      dw 27           ; Współczynnik filtra
     DIVISOR_CONST equ 256       ; Dzielnik filtra
     
-    ; random_seed dw 12345        ; Usunięto - Ziarno generatora liczb pseudolosowych
-
     Buf_1       db 6 dup('$')   ; Bufor dla konwersji liczby na string (5 cyfr + znak końca '$')
     NL          db 13, 10, '$'  ; Sekwencja nowej linii
     MsgWE       db 'Tablica we:', 13, 10, '$'

@@ -5,3 +5,10 @@ CLRFILE.CV4
 CURRENT.STS
 zad5/
 OUTPUT.TXT
+zad6/Debug/
+zad6/Release/
+zad6/.vs/
+*.sdf
+*.suo
+*.db
+*.user
