@@ -69,8 +69,8 @@
   </ItemGroup>
   <ItemGroup>
     <MASM Include="_bubble_sort.asm" />
-    <MASM Include="_calculate_string_length.asm" />
     <MASM Include="_calculate_ticket_price.asm" />
+    <MASM Include="_count_char_frequencies_asm.asm" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

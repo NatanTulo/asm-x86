@@ -13,7 +13,7 @@ using namespace std;
 using namespace std::chrono;
 
 extern "C" int calculate_ticket_price(int adultCount, int childCount, int discountPercentage); // Oblicza całkowity koszt biletów
-extern "C" int calculate_string_length(const char* strx);				// zwraca długość łańcucha znaków strx (zmieniono na const char*)
+extern "C" void count_char_frequencies_asm(const char* str, int* frequencies); // Zlicza częstotliwość liter w str (tylko litery a-z, case-insensitive)
 extern "C" void bubble_sort(char* array, int length);  // sortuje tablicę znaków bąbelkowo
 
 // Szablon funkcji do pobierania i walidowania danych numerycznych
@@ -94,7 +94,14 @@ void drawPattern(int cellSize, char lightChar, char darkChar) {
     for (int i = 0; i < cellSize; ++i) { // Pętla po wierszach "komórek" wzoru
         for (int j = 0; j < cellSize; ++j) { // Pętla po kolumnach "komórek" wzoru
             char charToPrint;
-            if ((i + j) % 2 == 0) { // Logika szachownicy dla komórek
+            // Oblicz minimalną odległość od krawędzi pionowej i poziomej
+            int dist_i = min(i, cellSize - 1 - i);
+            int dist_j = min(j, cellSize - 1 - j);
+            // Wybierz mniejszą z tych odległości, aby określić "warstwę" ramki
+            int distanceFromEdge = min(dist_i, dist_j);
+
+            // Użyj parzystości odległości od krawędzi do wyboru znaku
+            if (distanceFromEdge % 2 == 0) {
                 charToPrint = lightChar;
             }
             else {
@@ -185,15 +192,36 @@ int main()
 
     //*****************************************************
 
-    // Obliczanie długości łańcucha z danymi od użytkownika
-    cout << "--- Kalkulator dlugosci lancucha ---" << endl;
+    // Analiza częstotliwości znaków w łańcuchu
+    cout << "--- Analiza czestotliwosci znakow w lancuchu ---" << endl;
     cout << "Podaj lancuch znakow: ";
     string userInputString;
     getline(cin, userInputString);
 
-    cout << "Wprowadzony lancuch: \"" << userInputString << "\"" << endl;
-    int string_length = calculate_string_length(userInputString.c_str());
-    cout << "Dlugosc lancucha (obliczona przez calculate_string_length z ASM): " << string_length << endl << endl;
+    string lettersOnlyForFrequency = filterLettersOnly(userInputString);
+
+    if (lettersOnlyForFrequency.empty()) {
+        cout << "Nie wprowadzono zadnych liter do analizy!" << endl << endl;
+    } else {
+        cout << "Wprowadzony lancuch: \"" << userInputString << "\"" << endl;
+        cout << "Lancuch po filtracji (tylko litery): \"" << lettersOnlyForFrequency << "\"" << endl;
+
+        int charFrequencies[26] = {0}; // Tablica na liczniki dla a-z
+        count_char_frequencies_asm(lettersOnlyForFrequency.c_str(), charFrequencies);
+
+        cout << "Czestotliwosc wystepowania liter (a-z, bez rozrozniania wielkosci):" << endl;
+        bool foundAny = false;
+        for (int i = 0; i < 26; ++i) {
+            if (charFrequencies[i] > 0) {
+                cout << static_cast<char>('a' + i) << " - " << charFrequencies[i] << endl;
+                foundAny = true;
+            }
+        }
+        if (!foundAny) {
+            cout << "Nie znaleziono liter w podanym ciagu." << endl;
+        }
+        cout << endl;
+    }
 
     //*****************************************************
 
