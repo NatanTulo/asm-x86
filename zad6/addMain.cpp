@@ -7,6 +7,7 @@
 #include <chrono> // Dodano dla pomiaru czasu
 #include <iomanip> // Dodano dla formatowania wyjścia
 #include <cctype>
+#include <vector>
 
 using namespace std;
 using namespace std::chrono;
@@ -110,6 +111,44 @@ void drawPattern(int cellSize, char lightChar, char darkChar) {
     }
     cout << endl;
 }
+
+
+// Prosty generator ciągu Fibonacciego - funkcja C++
+void generateFibonacci() {
+    cout << "--- Generator ciAgu Fibonacciego (C++ vector) ---" << endl;
+
+    int length = getValidatedInput<int>("Podaj d;ugosc ciagu Fibonacciego: ");
+
+    if (length <= 0) {
+        cout << "Dlugosc musi byc wieksza od 0!" << endl;
+        return;
+    }
+
+    vector<long long> fibonacci;
+
+    // Generuj ciąg Fibonacciego
+    for (int i = 0; i < length; i++) {
+        if (i == 0) {
+            fibonacci.push_back(0);
+        }
+        else if (i == 1) {
+            fibonacci.push_back(1);
+        }
+        else {
+            long long next = fibonacci[i - 1] + fibonacci[i - 2];
+            fibonacci.push_back(next);
+        }
+    }
+
+    // Wyświetl wyniki
+    cout << "\nCiag Fibonacciego (" << length << " elementOw):" << endl;
+    for (int i = 0; i < fibonacci.size(); i++) {
+        cout << "F(" << i << ") = " << fibonacci[i] << endl;
+    }
+
+    cout << "\nVector zawiera " << fibonacci.size() << " liczb Fibonacciego." << endl << endl;
+}
+
 
 // Funkcja pomocnicza do filtrowania tylko liter z stringa
 string filterLettersOnly(const string& input) {
@@ -224,6 +263,8 @@ int main()
     darkSymbol = getValidatedChar("Podaj znak ciemny (np. '.'): ");
 
     drawPattern(patternCellSize, lightSymbol, darkSymbol);
+
+    generateFibonacci();
 
     return 0;
 }
