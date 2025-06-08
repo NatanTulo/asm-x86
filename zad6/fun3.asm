@@ -1,4 +1,4 @@
-title Bubble Sort Subroutine (bubble_sort.asm)
+title Bubble Sort Subroutine (_bubble_sort.asm)
 ; This subroutine links to Visual C++.
 ; Sorts an array of characters using bubble sort algorithm.
 ; Arguments: 
@@ -9,7 +9,6 @@ title Bubble Sort Subroutine (bubble_sort.asm)
 .386P
 .model flat
 public _bubble_sort
-
 .code
 
 ; Funkcja sortowania b¹belkowego
@@ -30,45 +29,46 @@ _bubble_sort proc near
     cmp ecx, 2          ; jeœli d³ugoœæ < 2, nie ma co sortowaæ
     jb sort_end
     
-    mov edi, ecx        ; edi = liczba przebiegów zewnêtrznych
-    dec edi             ; n-1 przebiegów
+    mov edi, 0          ; edi = licznik przebiegów zewnêtrznych (i)
     
 outer_loop:
-    cmp edi, 0
-    jle sort_end
+    mov eax, ecx        ; eax = n
+    dec eax             ; eax = n-1
+    cmp edi, eax        ; sprawdŸ czy i < n-1
+    jge sort_end        ; jeœli i >= n-1, koniec
     
-    mov ebx, 0          ; indeks dla pêtli wewnêtrznej
-    mov edx, ecx        ; liczba porównañ w tym przebiegu
-    sub edx, edi        ; edx = ecx - edi
-    dec edx             ; pomniejsz o 1
+    mov ebx, 0          ; ebx = licznik pêtli wewnêtrznej (j)
     
 inner_loop:
-    cmp ebx, edx
-    jge next_outer
+    mov eax, ecx        ; eax = n
+    sub eax, edi        ; eax = n - i
+    dec eax             ; eax = n - i - 1
+    cmp ebx, eax        ; sprawdŸ czy j < n-i-1
+    jge next_outer      ; jeœli j >= n-i-1, nastêpny przebieg zewnêtrzny
     
     ; Porównaj elementy [esi+ebx] i [esi+ebx+1]
     mov al, [esi+ebx]
     mov ah, [esi+ebx+1]
     
-    ; Konwertuj kopie na wielkie litery do porównania
+    ; Stwórz kopie do porównania (konwersja na wielkie litery)
     push eax            ; zachowaj oryginalne wartoœci
     call to_upper_al
     call to_upper_ah
     
-    cmp al, ah
+    cmp al, ah          ; porównaj skonwertowane znaki
     pop eax             ; przywróæ oryginalne wartoœci
     jle no_swap         ; jeœli al <= ah, nie zamieniaj
     
-    ; Zamieñ oryginalne elementy
+    ; Zamieñ oryginalne elementy miejscami
     mov [esi+ebx], ah
     mov [esi+ebx+1], al
     
 no_swap:
-    inc ebx
+    inc ebx             ; j++
     jmp inner_loop
     
 next_outer:
-    dec edi
+    inc edi             ; i++
     jmp outer_loop
     
 sort_end:
@@ -102,5 +102,4 @@ ah_done:
     ret
 
 _bubble_sort endp
-
 end

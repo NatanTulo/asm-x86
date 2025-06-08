@@ -4,8 +4,11 @@
 #include <string> // Dodano dla std::string i std::getline
 #include <limits> // Dodano dla std::numeric_limits
 #include <cstring> // Dodano dla strcpy
+#include <chrono> // Dodano dla pomiaru czasu
+#include <iomanip> // Dodano dla formatowania wyjścia
 
 using namespace std;
+using namespace std::chrono;
 
 extern "C" int fun(int adultCount, int childCount, int discountPercentage); // Oblicza całkowity koszt biletów
 extern "C" int fun2(const char* strx);				// zwraca długość łańcucha znaków strx (zmieniono na const char*)
@@ -36,13 +39,51 @@ char getValidatedChar(const string& prompt) {
     string line;
     while (true) {
         cout << prompt;
-        getline(cin, line); // Wczytaj całą linię
+        getline(cin, line); // Wczytuj całą linię
         if (line.length() == 1) { // Sprawdź, czy wprowadzono dokładnie jeden znak
             value = line[0];
             return value;
         }
         cout << "Niepoprawna wartosc. Wprowadz pojedynczy znak. Sprobuj ponownie." << endl;
     }
+}
+
+// Funkcja C++ do sortowania bąbelkowego
+void bubble_sort_cpp(char* array, int length) {
+    for (int i = 0; i < length - 1; i++) {
+        for (int j = 0; j < length - i - 1; j++) {
+            if (array[j] > array[j + 1]) {
+                // Zamień elementy
+                char temp = array[j];
+                array[j] = array[j + 1];
+                array[j + 1] = temp;
+            }
+        }
+    }
+}
+
+// Funkcja do pomiaru czasu wykonania sortowania
+template<typename SortFunc>
+double measureSortTime(SortFunc sortFunction, char* data, int length, const string& sortName) {
+    // Stwórz kopię danych do sortowania
+    char* dataCopy = new char[length + 1];
+    strcpy(dataCopy, data);
+
+    // Pomiar czasu
+    auto start = high_resolution_clock::now();
+    sortFunction(dataCopy, length);
+    auto end = high_resolution_clock::now();
+
+    // Oblicz czas w mikrosekundach
+    auto duration = duration_cast<microseconds>(end - start);
+    double timeInMicroseconds = duration.count();
+
+    cout << sortName << " - wynik sortowania: \"" << dataCopy << "\"" << endl;
+    cout << sortName << " - czas wykonania: " << fixed << setprecision(2)
+        << timeInMicroseconds << " mikrosekund (" << timeInMicroseconds / 1000.0 << " ms)" << endl;
+
+    delete[] dataCopy;
+    return timeInMicroseconds;
 }
 
 // Funkcja C++ do rysowania wzoru
@@ -118,8 +159,8 @@ int main()
 
     //*****************************************************
 
-    // Sortowanie alfabetyczne (fun3 - bubble sort)
-    cout << "--- Sortowanie alfabetyczne liter (ASM) ---" << endl;
+    // Sortowanie alfabetyczne - porównanie ASM vs C++
+    cout << "--- Porownanie sortowania ASM vs C++ ---" << endl;
     cout << "Podaj tekst do posortowania: ";
     string textToSort;
     getline(cin, textToSort);
@@ -133,18 +174,41 @@ int main()
     else {
         cout << "Tekst oryginalny: \"" << textToSort << "\"" << endl;
         cout << "Wyfiltrowane litery: \"" << lettersOnly << "\"" << endl;
+        cout << "Dlugosc ciagu do sortowania: " << lettersOnly.length() << " znakow" << endl << endl;
 
-        // Przygotuj bufor do sortowania (kopia dla zachowania oryginału)
-        char* sortBuffer = new char[lettersOnly.length() + 1];
-        strcpy(sortBuffer, lettersOnly.c_str());
+        // Przygotuj bufor do sortowania
+        char* sortData = new char[lettersOnly.length() + 1];
+        strcpy(sortData, lettersOnly.c_str());
 
-        // Wywołaj funkcję sortowania z ASM
-        bubble_sort(sortBuffer, static_cast<int>(lettersOnly.length()));
+        cout << "=== POROWNANIE WYDAJNOSCI SORTOWANIA ===" << endl;
 
-        cout << "Litery posortowane alfabetycznie (ASM bubble sort): \"" << sortBuffer << "\"" << endl << endl;
+        // Test sortowania ASM
+        double asmTime = measureSortTime(bubble_sort, sortData, static_cast<int>(lettersOnly.length()), "ASM Bubble Sort");
+        cout << endl;
+
+        // Test sortowania C++
+        double cppTime = measureSortTime(bubble_sort_cpp, sortData, static_cast<int>(lettersOnly.length()), "C++ Bubble Sort");
+        cout << endl;
+
+        // Analiza wyników
+        cout << "=== ANALIZA WYNIKOW ===" << endl;
+        if (asmTime < cppTime) {
+            double speedup = cppTime / asmTime;
+            cout << "ASM jest szybsze o " << fixed << setprecision(2) << speedup << "x" << endl;
+        }
+        else if (cppTime < asmTime) {
+            double speedup = asmTime / cppTime;
+            cout << "C++ jest szybsze o " << fixed << setprecision(2) << speedup << "x" << endl;
+        }
+        else {
+            cout << "Oba algorytmy maja podobna wydajnosc" << endl;
+        }
+
+        cout << "Roznica czasowa: " << fixed << setprecision(2)
+            << abs(asmTime - cppTime) << " mikrosekund" << endl << endl;
 
         // Zwolnij pamięć
-        delete[] sortBuffer;
+        delete[] sortData;
     }
 
     //******* FUNKCJE C++ *********
