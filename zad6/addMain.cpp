@@ -12,11 +12,9 @@
 using namespace std;
 using namespace std::chrono;
 
-extern "C" int fun(int adultCount, int childCount, int discountPercentage); // Oblicza całkowity koszt biletów
-extern "C" int fun2(const char* strx);				// zwraca długość łańcucha znaków strx (zmieniono na const char*)
+extern "C" int calculate_ticket_price(int adultCount, int childCount, int discountPercentage); // Oblicza całkowity koszt biletów
+extern "C" int calculate_string_length(const char* strx);				// zwraca długość łańcucha znaków strx (zmieniono na const char*)
 extern "C" void bubble_sort(char* array, int length);  // sortuje tablicę znaków bąbelkowo
-extern "C" void set_input_string(const char* input);   // ustawia string do sortowania w ASM
-extern "C" char* read_and_sort_string();               // pobiera i sortuje string (zwraca wskaźnik)
 
 // Szablon funkcji do pobierania i walidowania danych numerycznych
 template <typename T>
@@ -115,9 +113,9 @@ void drawPattern(int cellSize, char lightChar, char darkChar) {
 
 // Prosty generator ciągu Fibonacciego - funkcja C++
 void generateFibonacci() {
-    cout << "--- Generator ciAgu Fibonacciego (C++ vector) ---" << endl;
+    cout << "--- Generator ciagu Fibonacciego (C++ vector) ---" << endl;
 
-    int length = getValidatedInput<int>("Podaj d;ugosc ciagu Fibonacciego: ");
+    int length = getValidatedInput<int>("Podaj dlugosc ciagu Fibonacciego: ");
 
     if (length <= 0) {
         cout << "Dlugosc musi byc wieksza od 0!" << endl;
@@ -141,14 +139,13 @@ void generateFibonacci() {
     }
 
     // Wyświetl wyniki
-    cout << "\nCiag Fibonacciego (" << length << " elementOw):" << endl;
+    cout << "\nCiag Fibonacciego (" << length << " elementow):" << endl;
     for (int i = 0; i < fibonacci.size(); i++) {
         cout << "F(" << i << ") = " << fibonacci[i] << endl;
     }
 
     cout << "\nVector zawiera " << fibonacci.size() << " liczb Fibonacciego." << endl << endl;
 }
-
 
 // Funkcja pomocnicza do filtrowania tylko liter z stringa
 string filterLettersOnly(const string& input) {
@@ -175,7 +172,7 @@ int main()
     discount = getValidatedInput<int>("Podaj procent znizki (np. 10 dla 10%): ");
 
     // Ceny biletów są zdefiniowane w fun.asm: Dorosły=25, Dziecko=15
-    int ticketPrice = fun(adults, children, discount);
+    int ticketPrice = calculate_ticket_price(adults, children, discount);
 
     cout << "\n--- Podsumowanie biletow ---" << endl;
     cout << "Cena biletu dla doroslego: 25 PLN (zdefiniowana w ASM)" << endl;
@@ -195,8 +192,8 @@ int main()
     getline(cin, userInputString);
 
     cout << "Wprowadzony lancuch: \"" << userInputString << "\"" << endl;
-    int string_length = fun2(userInputString.c_str());
-    cout << "Dlugosc lancucha (obliczona przez fun2 z ASM): " << string_length << endl << endl;
+    int string_length = calculate_string_length(userInputString.c_str());
+    cout << "Dlugosc lancucha (obliczona przez calculate_string_length z ASM): " << string_length << endl << endl;
 
     //*****************************************************
 

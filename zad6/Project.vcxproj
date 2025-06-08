@@ -62,14 +62,15 @@
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>User32.Lib;Irvine32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <ClCompile />
   </ItemDefinitionGroup>
   <ItemGroup>
-    <MASM Include="fun.asm" />
-    <MASM Include="fun2.asm" />
-    <MASM Include="fun3.asm" />
+    <ClCompile Include="addMain.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="addMain.cpp" />
+    <MASM Include="_bubble_sort.asm" />
+    <MASM Include="_calculate_string_length.asm" />
+    <MASM Include="_calculate_ticket_price.asm" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

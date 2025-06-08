@@ -11,8 +11,8 @@ title Bubble Sort Subroutine (_bubble_sort.asm)
 public _bubble_sort
 .code
 
-; Funkcja sortowania b¹belkowego
-; Argumenty: [ebp+8] = wskaŸnik do tablicy, [ebp+12] = d³ugoœæ tablicy
+; Funkcja sortowania bÄ…belkowego
+; Argumenty: [ebp+8] = wskaÅºnik do tablicy, [ebp+12] = dÅ‚ugoÅ›Ä‡ tablicy
 _bubble_sort proc near
     push ebp
     mov ebp, esp
@@ -23,43 +23,43 @@ _bubble_sort proc near
     push esi
     push edi
     
-    mov esi, [ebp+8]    ; wskaŸnik do tablicy
-    mov ecx, [ebp+12]   ; d³ugoœæ tablicy
+    mov esi, [ebp+8]    ; wskaÅºnik do tablicy
+    mov ecx, [ebp+12]   ; dÅ‚ugoÅ›Ä‡ tablicy
     
-    cmp ecx, 2          ; jeœli d³ugoœæ < 2, nie ma co sortowaæ
+    cmp ecx, 2          ; jeÅ›li dÅ‚ugoÅ›Ä‡ < 2, nie ma co sortowaÄ‡
     jb sort_end
     
-    mov edi, 0          ; edi = licznik przebiegów zewnêtrznych (i)
+    mov edi, 0          ; edi = licznik przebiegÃ³w zewnÄ™trznych (i)
     
 outer_loop:
     mov eax, ecx        ; eax = n
     dec eax             ; eax = n-1
-    cmp edi, eax        ; sprawdŸ czy i < n-1
-    jge sort_end        ; jeœli i >= n-1, koniec
+    cmp edi, eax        ; sprawdÅº czy i < n-1
+    jge sort_end        ; jeÅ›li i >= n-1, koniec
     
-    mov ebx, 0          ; ebx = licznik pêtli wewnêtrznej (j)
+    mov ebx, 0          ; ebx = licznik pÄ™tli wewnÄ™trznej (j)
     
 inner_loop:
     mov eax, ecx        ; eax = n
     sub eax, edi        ; eax = n - i
     dec eax             ; eax = n - i - 1
-    cmp ebx, eax        ; sprawdŸ czy j < n-i-1
-    jge next_outer      ; jeœli j >= n-i-1, nastêpny przebieg zewnêtrzny
+    cmp ebx, eax        ; sprawdÅº czy j < n-i-1
+    jge next_outer      ; jeÅ›li j >= n-i-1, nastÄ™pny przebieg zewnÄ™trzny
     
-    ; Porównaj elementy [esi+ebx] i [esi+ebx+1]
+    ; PorÃ³wnaj elementy [esi+ebx] i [esi+ebx+1]
     mov al, [esi+ebx]
     mov ah, [esi+ebx+1]
     
-    ; Stwórz kopie do porównania (konwersja na wielkie litery)
-    push eax            ; zachowaj oryginalne wartoœci
+    ; StwÃ³rz kopie do porÃ³wnania (konwersja na wielkie litery)
+    push eax            ; zachowaj oryginalne wartoÅ›ci
     call to_upper_al
     call to_upper_ah
     
-    cmp al, ah          ; porównaj skonwertowane znaki
-    pop eax             ; przywróæ oryginalne wartoœci
-    jle no_swap         ; jeœli al <= ah, nie zamieniaj
+    cmp al, ah          ; porownaj skonwertowane znaki
+    pop eax             ; przywrÃ³Ä‡ oryginalne wartoÅ›ci
+    jle no_swap         ; jeÅ›li al <= ah, nie zamieniaj
     
-    ; Zamieñ oryginalne elementy miejscami
+    ; ZamieÅ„ oryginalne elementy miejscami
     mov [esi+ebx], ah
     mov [esi+ebx+1], al
     
@@ -81,7 +81,7 @@ sort_end:
     pop ebp
     ret
 
-; Pomocnicza funkcja do konwersji znaku w AL na wielk¹ literê
+; Pomocnicza funkcja do konwersji znaku w AL na wielkÄ… literÄ™
 to_upper_al:
     cmp al, 'a'
     jb al_done
@@ -91,7 +91,7 @@ to_upper_al:
 al_done:
     ret
 
-; Pomocnicza funkcja do konwersji znaku w AH na wielk¹ literê  
+; Pomocnicza funkcja do konwersji znaku w AH na wielkÄ… literÄ™
 to_upper_ah:
     cmp ah, 'a'
     jb ah_done

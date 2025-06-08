@@ -1,4 +1,4 @@
-title Ticket Calculator Subroutine (fun.asm)
+title Ticket Calculator Subroutine (_calculate_ticket_price.asm)
 
 ; This subroutine links to Visual C++.
 ; Calculates total ticket price.
@@ -6,14 +6,14 @@ title Ticket Calculator Subroutine (fun.asm)
 
 .386P
 .model flat
-public _fun
+public _calculate_ticket_price
 
 ADULT_TICKET_PRICE equ 25  ; Cena biletu dla dorosłego
 CHILD_TICKET_PRICE equ 15  ; Cena biletu dla dziecka
 HUNDRED            equ 100 ; Stała do dzielenia przez 100 dla procentów
 
 .code
-_fun proc near   ; int fun(int adultCount, int childCount, int discountPercentage)
+_calculate_ticket_price proc near   ; int calculate_ticket_price(int adultCount, int childCount, int discountPercentage)
     push   ebp
     mov    ebp, esp
     push   ebx          ; Zachowaj ebx
@@ -56,6 +56,6 @@ _fun proc near   ; int fun(int adultCount, int childCount, int discountPercentag
     pop    ebx
     pop    ebp
     ret                   
-_fun endp
+_calculate_ticket_price endp
 end
 

@@ -1,4 +1,4 @@
-title String Length Calculator Subroutine (fun2.asm)
+title String Length Calculator Subroutine (_calculate_string_length.asm)
 
 ; This subroutine links to Visual C++.
 ; Calculates the length of a null-terminated string.
@@ -7,12 +7,12 @@ title String Length Calculator Subroutine (fun2.asm)
 
 .386P
 .model flat
-public _fun2
+public _calculate_string_length
 
 MAX_STRING_SCAN_LENGTH equ 0FFFFh ; Maksymalna liczba znaków do przeskanowania (dla bezpieczeństwa)
 
 .code
-_fun2 proc near   ; Oblicza długość łańcucha znaków
+_calculate_string_length proc near   ; Oblicza długość łańcucha znaków
     push ebp
     mov ebp, esp
     push ecx
@@ -40,6 +40,6 @@ length_counted:
     pop ecx
     pop ebp
     ret                   
-_fun2 endp
+_calculate_string_length endp
 end
 
