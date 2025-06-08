@@ -3,12 +3,15 @@
 #include <iostream>
 #include <string> // Dodano dla std::string i std::getline
 #include <limits> // Dodano dla std::numeric_limits
+#include <cstring> // Dodano dla strcpy
 
 using namespace std;
 
 extern "C" int fun(int adultCount, int childCount, int discountPercentage); // Oblicza całkowity koszt biletów
-extern "C" int fun2(const char *strx);				// zwraca długość łańcucha znaków strx (zmieniono na const char*)
-// extern "C" int fun3(int x);						// x = x + 10
+extern "C" int fun2(const char* strx);				// zwraca długość łańcucha znaków strx (zmieniono na const char*)
+extern "C" void bubble_sort(char* array, int length);  // sortuje tablicę znaków bąbelkowo
+extern "C" void set_input_string(const char* input);   // ustawia string do sortowania w ASM
+extern "C" char* read_and_sort_string();               // pobiera i sortuje string (zwraca wskaźnik)
 
 // Szablon funkcji do pobierania i walidowania danych numerycznych
 template <typename T>
@@ -51,7 +54,8 @@ void drawPattern(int cellSize, char lightChar, char darkChar) {
             char charToPrint;
             if ((i + j) % 2 == 0) { // Logika szachownicy dla komórek
                 charToPrint = lightChar;
-            } else {
+            }
+            else {
                 charToPrint = darkChar;
             }
             // Wydrukuj zwielokrotniony znak w poziomie dla bieżącej komórki
@@ -64,9 +68,20 @@ void drawPattern(int cellSize, char lightChar, char darkChar) {
     cout << endl;
 }
 
+// Funkcja pomocnicza do filtrowania tylko liter z stringa
+string filterLettersOnly(const string& input) {
+    string result;
+    for (char c : input) {
+        if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')) {
+            result += c;
+        }
+    }
+    return result;
+}
+
 int main()
 {
-	//******* FUNKCJE ASM *********
+    //******* FUNKCJE ASM *********
     // Kalkulator biletowy z danymi od użytkownika
     int adults;
     int children;
@@ -89,7 +104,7 @@ int main()
     cout << "------------------------------------" << endl;
     cout << "Calkowity koszt biletow: " << ticketPrice << " PLN" << endl << endl;
 
-	//*****************************************************
+    //*****************************************************
 
     // Obliczanie długości łańcucha z danymi od użytkownika
     cout << "--- Kalkulator dlugosci lancucha ---" << endl;
@@ -97,21 +112,44 @@ int main()
     string userInputString;
     getline(cin, userInputString);
 
-
     cout << "Wprowadzony lancuch: \"" << userInputString << "\"" << endl;
     int string_length = fun2(userInputString.c_str());
     cout << "Dlugosc lancucha (obliczona przez fun2 z ASM): " << string_length << endl << endl;
 
-
     //*****************************************************
 
-    // Sortowanie alfabetyczne
-    
-    ////miejsce na fun3
+    // Sortowanie alfabetyczne (fun3 - bubble sort)
+    cout << "--- Sortowanie alfabetyczne liter (ASM) ---" << endl;
+    cout << "Podaj tekst do posortowania: ";
+    string textToSort;
+    getline(cin, textToSort);
+
+    // Filtruj tylko litery z wprowadzonego tekstu
+    string lettersOnly = filterLettersOnly(textToSort);
+
+    if (lettersOnly.empty()) {
+        cout << "Nie wprowadzono zadnych liter do sortowania!" << endl << endl;
+    }
+    else {
+        cout << "Tekst oryginalny: \"" << textToSort << "\"" << endl;
+        cout << "Wyfiltrowane litery: \"" << lettersOnly << "\"" << endl;
+
+        // Przygotuj bufor do sortowania (kopia dla zachowania oryginału)
+        char* sortBuffer = new char[lettersOnly.length() + 1];
+        strcpy(sortBuffer, lettersOnly.c_str());
+
+        // Wywołaj funkcję sortowania z ASM
+        bubble_sort(sortBuffer, static_cast<int>(lettersOnly.length()));
+
+        cout << "Litery posortowane alfabetycznie (ASM bubble sort): \"" << sortBuffer << "\"" << endl << endl;
+
+        // Zwolnij pamięć
+        delete[] sortBuffer;
+    }
 
     //******* FUNKCJE C++ *********
     // Rysowanie wzoru
-    int patternCellSize; 
+    int patternCellSize;
     char lightSymbol, darkSymbol;
 
     cout << "--- Rysowanie wzoru (C++) ---" << endl;
@@ -121,7 +159,5 @@ int main()
 
     drawPattern(patternCellSize, lightSymbol, darkSymbol);
 
-	return 0;
+    return 0;
 }
-
-
