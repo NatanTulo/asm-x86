@@ -98,76 +98,6 @@ string filterLettersOnly(const string& input) {
 
 int main()
 {
-    // Kalkulator biletowy z danymi od użytkownika
-    int adults;
-    int children;
-    int discount;
-    int ticketPrice; // Zmienna na wynik obliczeń ASM
-
-    const int ADULT_TICKET_PRICE = 25;
-    const int CHILD_TICKET_PRICE = 15;
-    const int HUNDRED = 100;
-
-    cout << "--- Kalkulator biletowy ---" << endl;
-    adults = getValidatedInput<int>("Podaj liczbe doroslych: ");
-    children = getValidatedInput<int>("Podaj liczbe dzieci: ");
-    discount = getValidatedInput<int>("Podaj procent znizki (np. 10 dla 10%): ");
-
-    // Ceny biletów zdefiniowane jako stałe C++ powyżej
-    __asm {
-        push   eax
-        push   ebx
-        push   ecx
-        push   edx
-        push   esi
-        push   edi
-
-        // Oblicz koszt biletów dla dorosłych
-        mov    eax, [adults]       ; adultCount
-        mov    ebx, [ADULT_TICKET_PRICE]
-        mul    ebx                 ; eax = adultCount * ADULT_TICKET_PRICE
-        mov    esi, eax            ; esi = adultsCost
-
-        // Oblicz koszt biletów dla dzieci
-        mov    eax, [children]     ; childCount
-        mov    ebx, [CHILD_TICKET_PRICE]
-        mul    ebx                 ; eax = childCount * CHILD_TICKET_PRICE
-        mov    edi, eax            ; edi = childrenCost
-
-        // Suma kosztów przed zniżką
-        add    esi, edi            ; esi = totalCostBeforeDiscount (esi = adultsCost + childrenCost)
-
-        // Oblicz kwotę zniżki
-        mov    eax, esi            ; eax = totalCostBeforeDiscount
-        mov    ebx, [discount]     ; discountPercentage
-        mul    ebx                 ; edx:eax = totalCostBeforeDiscount * discountPercentage
-        mov    ecx, [HUNDRED]
-        div    ecx                 ; eax = (totalCostBeforeDiscount * discountPercentage) / HUNDRED (kwota zniżki)
-                                   ; edx = reszta (nieużywana)
-
-        // Ostateczna cena
-        sub    esi, eax            ; esi = totalCostBeforeDiscount - discountAmount
-        mov    [ticketPrice], esi  ; Zapisz ostateczną cenę do zmiennej C++
-
-        pop    edi
-        pop    esi
-        pop    edx
-        pop    ecx
-        pop    ebx
-        pop    eax
-    }
-
-    cout << "\n--- Podsumowanie biletow ---" << endl;
-    cout << "Cena biletu dla doroslego: " << ADULT_TICKET_PRICE << " PLN" << endl;
-    cout << "Cena biletu dla dziecka: " << CHILD_TICKET_PRICE << " PLN" << endl;
-    cout << "Liczba doroslych: " << adults << endl;
-    cout << "Liczba dzieci: " << children << endl;
-    cout << "Zastosowana znizka: " << discount << "%" << endl;
-    cout << "------------------------------------" << endl;
-    cout << "Calkowity koszt biletow: " << ticketPrice << " PLN" << endl << endl;
-
-    //*****************************************************
-
     // Analiza częstotliwości znaków w łańcuchu
     cout << "--- Analiza czestotliwosci znakow w lancuchu ---" << endl;
     cout << "Podaj lancuch znakow: ";
@@ -253,12 +183,83 @@ int main()
         delete[] sortData;
     }
 
-    //******* FUNKCJE C++ *********
+    //*****************************************************
+
+    // Kalkulator biletowy z danymi od użytkownika
+    int adults;
+    int children;
+    int discount;
+    int ticketPrice; // Zmienna na wynik obliczeń ASM
+
+    const int ADULT_TICKET_PRICE = 25;
+    const int CHILD_TICKET_PRICE = 15;
+    const int HUNDRED = 100;
+
+    cout << "--- Kalkulator biletowy ---" << endl;
+    adults = getValidatedInput<int>("Podaj liczbe doroslych: ");
+    children = getValidatedInput<int>("Podaj liczbe dzieci: ");
+    discount = getValidatedInput<int>("Podaj procent znizki (np. 10 dla 10%): ");
+
+    // Ceny biletów zdefiniowane jako stałe C++ powyżej
+    __asm {
+        push   eax
+        push   ebx
+        push   ecx
+        push   edx
+        push   esi
+        push   edi
+
+        // Oblicz koszt biletów dla dorosłych
+        mov    eax, [adults]       ; adultCount
+        mov    ebx, [ADULT_TICKET_PRICE]
+        mul    ebx                 ; eax = adultCount * ADULT_TICKET_PRICE
+        mov    esi, eax            ; esi = adultsCost
+
+        // Oblicz koszt biletów dla dzieci
+        mov    eax, [children]     ; childCount
+        mov    ebx, [CHILD_TICKET_PRICE]
+        mul    ebx                 ; eax = childCount * CHILD_TICKET_PRICE
+        mov    edi, eax            ; edi = childrenCost
+
+        // Suma kosztów przed zniżką
+        add    esi, edi            ; esi = totalCostBeforeDiscount (esi = adultsCost + childrenCost)
+
+        // Oblicz kwotę zniżki
+        mov    eax, esi            ; eax = totalCostBeforeDiscount
+        mov    ebx, [discount]     ; discountPercentage
+        mul    ebx                 ; edx:eax = totalCostBeforeDiscount * discountPercentage
+        mov    ecx, [HUNDRED]
+        div    ecx                 ; eax = (totalCostBeforeDiscount * discountPercentage) / HUNDRED (kwota zniżki)
+                                   ; edx = reszta (nieużywana)
+
+        // Ostateczna cena
+        sub    esi, eax            ; esi = totalCostBeforeDiscount - discountAmount
+        mov    [ticketPrice], esi  ; Zapisz ostateczną cenę do zmiennej C++
+
+        pop    edi
+        pop    esi
+        pop    edx
+        pop    ecx
+        pop    ebx
+        pop    eax
+    }
+
+    cout << "\n--- Podsumowanie biletow ---" << endl;
+    cout << "Cena biletu dla doroslego: " << ADULT_TICKET_PRICE << " PLN" << endl;
+    cout << "Cena biletu dla dziecka: " << CHILD_TICKET_PRICE << " PLN" << endl;
+    cout << "Liczba doroslych: " << adults << endl;
+    cout << "Liczba dzieci: " << children << endl;
+    cout << "Zastosowana znizka: " << discount << "%" << endl;
+    cout << "------------------------------------" << endl;
+    cout << "Calkowity koszt biletow: " << ticketPrice << " PLN" << endl << endl;
+
+    //*****************************************************
+
     // Rysowanie wzoru
     int patternCellSize;
     char lightSymbol, darkSymbol;
 
-    cout << "--- Rysowanie wzoru (C++) ---" << endl;
+    cout << "--- Rysowanie wzoru ---" << endl;
     patternCellSize = getValidatedInput<int>("Podaj rozmiar boku wzoru (liczba komorek na bok): ");
     lightSymbol = getValidatedChar("Podaj znak jasny (np. '@'): ");
     darkSymbol = getValidatedChar("Podaj znak ciemny (np. '.'): ");
@@ -378,10 +379,11 @@ int main()
         pop ebx
     }
     cout << endl; // Dodatkowa nowa linia po całym wzorze
-    // Koniec rysowania wzoru
+    
+    //*****************************************************
 
     // Kod generujący ciąg Fibonacciego
-    cout << "--- Generator ciagu Fibonacciego (ASM) ---" << endl; 
+    cout << "--- Generator ciagu Fibonacciego ---" << endl; 
 
     int fibLength; 
     fibLength = getValidatedInput<int>("Podaj dlugosc ciagu Fibonacciego: ");
