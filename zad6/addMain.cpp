@@ -1,5 +1,3 @@
-// Addem Main Program      (AddMain.cpp) 
-
 #include <iostream>
 #include <string> // Dodano dla std::string i std::getline
 #include <limits> // Dodano dla std::numeric_limits
@@ -8,11 +6,11 @@
 #include <iomanip> // Dodano dla formatowania wyjścia
 #include <cctype>
 #include <vector>
+#include <cstdio> // Dodano dla putchar
 
 using namespace std;
 using namespace std::chrono;
 
-extern "C" int calculate_ticket_price(int adultCount, int childCount, int discountPercentage); // Oblicza całkowity koszt biletów
 extern "C" void count_char_frequencies_asm(const char* str, int* frequencies); // Zlicza częstotliwość liter w str (tylko litery a-z, case-insensitive)
 extern "C" void bubble_sort(char* array, int length);  // sortuje tablicę znaków bąbelkowo
 
@@ -87,73 +85,6 @@ double measureSortTime(SortFunc sortFunction, char* data, int length, const stri
     return timeInMicroseconds;
 }
 
-// Funkcja C++ do rysowania wzoru
-void drawPattern(int cellSize, char lightChar, char darkChar) {
-    const int HORIZONTAL_CHAR_MULTIPLIER = 2; // Współczynnik kompensujący proporcje znaku (2:1 wysokość:szerokość)
-    cout << "\n--- Twoj wzor ---" << endl;
-    for (int i = 0; i < cellSize; ++i) { // Pętla po wierszach "komórek" wzoru
-        for (int j = 0; j < cellSize; ++j) { // Pętla po kolumnach "komórek" wzoru
-            char charToPrint;
-            // Oblicz minimalną odległość od krawędzi pionowej i poziomej
-            int dist_i = min(i, cellSize - 1 - i);
-            int dist_j = min(j, cellSize - 1 - j);
-            // Wybierz mniejszą z tych odległości, aby określić "warstwę" ramki
-            int distanceFromEdge = min(dist_i, dist_j);
-
-            // Użyj parzystości odległości od krawędzi do wyboru znaku
-            if (distanceFromEdge % 2 == 0) {
-                charToPrint = lightChar;
-            }
-            else {
-                charToPrint = darkChar;
-            }
-            // Wydrukuj zwielokrotniony znak w poziomie dla bieżącej komórki
-            for (int k = 0; k < HORIZONTAL_CHAR_MULTIPLIER; ++k) {
-                cout << charToPrint;
-            }
-        }
-        cout << endl; // Nowa linia po każdym wierszu komórek
-    }
-    cout << endl;
-}
-
-
-// Prosty generator ciągu Fibonacciego - funkcja C++
-void generateFibonacci() {
-    cout << "--- Generator ciagu Fibonacciego (C++ vector) ---" << endl;
-
-    int length = getValidatedInput<int>("Podaj dlugosc ciagu Fibonacciego: ");
-
-    if (length <= 0) {
-        cout << "Dlugosc musi byc wieksza od 0!" << endl;
-        return;
-    }
-
-    vector<long long> fibonacci;
-
-    // Generuj ciąg Fibonacciego
-    for (int i = 0; i < length; i++) {
-        if (i == 0) {
-            fibonacci.push_back(0);
-        }
-        else if (i == 1) {
-            fibonacci.push_back(1);
-        }
-        else {
-            long long next = fibonacci[i - 1] + fibonacci[i - 2];
-            fibonacci.push_back(next);
-        }
-    }
-
-    // Wyświetl wyniki
-    cout << "\nCiag Fibonacciego (" << length << " elementow):" << endl;
-    for (int i = 0; i < fibonacci.size(); i++) {
-        cout << "F(" << i << ") = " << fibonacci[i] << endl;
-    }
-
-    cout << "\nVector zawiera " << fibonacci.size() << " liczb Fibonacciego." << endl << endl;
-}
-
 // Funkcja pomocnicza do filtrowania tylko liter z stringa
 string filterLettersOnly(const string& input) {
     string result;
@@ -167,23 +98,68 @@ string filterLettersOnly(const string& input) {
 
 int main()
 {
-    //******* FUNKCJE ASM *********
     // Kalkulator biletowy z danymi od użytkownika
     int adults;
     int children;
     int discount;
+    int ticketPrice; // Zmienna na wynik obliczeń ASM
+
+    const int ADULT_TICKET_PRICE = 25;
+    const int CHILD_TICKET_PRICE = 15;
+    const int HUNDRED = 100;
 
     cout << "--- Kalkulator biletowy ---" << endl;
     adults = getValidatedInput<int>("Podaj liczbe doroslych: ");
     children = getValidatedInput<int>("Podaj liczbe dzieci: ");
     discount = getValidatedInput<int>("Podaj procent znizki (np. 10 dla 10%): ");
 
-    // Ceny biletów są zdefiniowane w fun.asm: Dorosły=25, Dziecko=15
-    int ticketPrice = calculate_ticket_price(adults, children, discount);
+    // Ceny biletów zdefiniowane jako stałe C++ powyżej
+    __asm {
+        push   eax
+        push   ebx
+        push   ecx
+        push   edx
+        push   esi
+        push   edi
+
+        // Oblicz koszt biletów dla dorosłych
+        mov    eax, [adults]       ; adultCount
+        mov    ebx, [ADULT_TICKET_PRICE]
+        mul    ebx                 ; eax = adultCount * ADULT_TICKET_PRICE
+        mov    esi, eax            ; esi = adultsCost
+
+        // Oblicz koszt biletów dla dzieci
+        mov    eax, [children]     ; childCount
+        mov    ebx, [CHILD_TICKET_PRICE]
+        mul    ebx                 ; eax = childCount * CHILD_TICKET_PRICE
+        mov    edi, eax            ; edi = childrenCost
+
+        // Suma kosztów przed zniżką
+        add    esi, edi            ; esi = totalCostBeforeDiscount (esi = adultsCost + childrenCost)
+
+        // Oblicz kwotę zniżki
+        mov    eax, esi            ; eax = totalCostBeforeDiscount
+        mov    ebx, [discount]     ; discountPercentage
+        mul    ebx                 ; edx:eax = totalCostBeforeDiscount * discountPercentage
+        mov    ecx, [HUNDRED]
+        div    ecx                 ; eax = (totalCostBeforeDiscount * discountPercentage) / HUNDRED (kwota zniżki)
+                                   ; edx = reszta (nieużywana)
+
+        // Ostateczna cena
+        sub    esi, eax            ; esi = totalCostBeforeDiscount - discountAmount
+        mov    [ticketPrice], esi  ; Zapisz ostateczną cenę do zmiennej C++
+
+        pop    edi
+        pop    esi
+        pop    edx
+        pop    ecx
+        pop    ebx
+        pop    eax
+    }
 
     cout << "\n--- Podsumowanie biletow ---" << endl;
-    cout << "Cena biletu dla doroslego: 25 PLN (zdefiniowana w ASM)" << endl;
-    cout << "Cena biletu dla dziecka: 15 PLN (zdefiniowana w ASM)" << endl;
+    cout << "Cena biletu dla doroslego: " << ADULT_TICKET_PRICE << " PLN" << endl;
+    cout << "Cena biletu dla dziecka: " << CHILD_TICKET_PRICE << " PLN" << endl;
     cout << "Liczba doroslych: " << adults << endl;
     cout << "Liczba dzieci: " << children << endl;
     cout << "Zastosowana znizka: " << discount << "%" << endl;
@@ -287,9 +263,210 @@ int main()
     lightSymbol = getValidatedChar("Podaj znak jasny (np. '@'): ");
     darkSymbol = getValidatedChar("Podaj znak ciemny (np. '.'): ");
 
-    drawPattern(patternCellSize, lightSymbol, darkSymbol);
+    const int HORIZONTAL_CHAR_MULTIPLIER = 2; 
+    cout << "\n--- Twoj wzor ---" << endl;
 
-    generateFibonacci();
+    __asm {
+        // Zapisz rejestry callee-saved, które będą modyfikowane
+        push ebx
+        push esi
+        push edi
+
+        // Inicjalizacja liczników pętli
+        // esi będzie licznikiem i (wiersze)
+        // edi będzie licznikiem j (kolumny)
+        // ecx, eax, edx będą używane do obliczeń i jako liczniki/argumenty
+
+        mov esi, 0          // i = 0
+    OuterLoop_i:
+        cmp esi, [patternCellSize]   // if (i >= patternCellSize) goto EndOuterLoop_i
+        jge EndOuterLoop_i
+
+        mov edi, 0          // j = 0
+    InnerLoop_j:
+        cmp edi, [patternCellSize]   // if (j >= patternCellSize) goto EndInnerLoop_j
+        jge EndInnerLoop_j
+
+        // Oblicz dist_i = min(i, patternCellSize - 1 - i)
+        mov eax, [patternCellSize]
+        dec eax
+        sub eax, esi        // eax = patternCellSize - 1 - i
+        mov ebx, esi        // ebx = i
+        cmp ebx, eax        // Compare i with (patternCellSize - 1 - i)
+        jle dist_i_is_i     // if i <= (patternCellSize - 1 - i), then dist_i = i
+        mov ecx, eax        // else dist_i = (patternCellSize - 1 - i)
+        jmp dist_i_done
+    dist_i_is_i:
+        mov ecx, ebx        // dist_i = i
+    dist_i_done:
+        // ecx przechowuje dist_i
+
+        // Oblicz dist_j = min(j, patternCellSize - 1 - j)
+        mov eax, [patternCellSize]
+        dec eax
+        sub eax, edi        // eax = patternCellSize - 1 - j
+        mov ebx, edi        // ebx = j
+        cmp ebx, eax        // Compare j with (patternCellSize - 1 - j)
+        jle dist_j_is_j     // if j <= (patternCellSize - 1 - j), then dist_j = j
+        mov edx, eax        // else dist_j = (patternCellSize - 1 - j)
+        jmp dist_j_done
+    dist_j_is_j:
+        mov edx, ebx        // dist_j = j
+    dist_j_done:
+        // edx przechowuje dist_j
+
+        // Oblicz distanceFromEdge = min(dist_i, dist_j)
+        // dist_i jest w ecx, dist_j jest w edx
+        mov eax, ecx        // eax = dist_i
+        cmp eax, edx        // if (dist_i <= dist_j)
+        jle dist_Edge_is_dist_i
+        mov eax, edx        // distanceFromEdge = dist_j (w eax)
+        jmp dist_Edge_done
+    dist_Edge_is_dist_i:
+        // distanceFromEdge = dist_i (już w eax)
+    dist_Edge_done:
+        // eax przechowuje distanceFromEdge
+
+        // Wybierz charToPrint na podstawie parzystości distanceFromEdge
+        // (distanceFromEdge % 2 == 0) -> test najmłodszego bitu eax
+        test eax, 1
+        jnz IsOdd           // Jeśli nie zero (nieparzyste), skocz do IsOdd
+        // Parzyste: charToPrint = lightSymbol
+        mov bl, byte ptr [lightSymbol] 
+        jmp PrintCharLoopSetup
+    IsOdd:
+        // Nieparzyste: charToPrint = darkSymbol
+        mov bl, byte ptr [darkSymbol]
+
+    PrintCharLoopSetup:
+        // Wydrukuj charToPrint (w bl) HORIZONTAL_CHAR_MULTIPLIER razy
+        mov ecx, 0          // licznik k = 0
+    Loop_k:
+        cmp ecx, HORIZONTAL_CHAR_MULTIPLIER
+        jge EndLoop_k
+
+        // Zapisz ecx (licznik k), ponieważ putchar może go zmienić
+        push ecx
+
+        movzx eax, bl       // Rozszerz charToPrint (bl) do eax jako argument dla putchar
+        push eax            // Przekaż argument na stos
+        call putchar
+        add esp, 4          // Zdejmij argument ze stosu (konwencja __cdecl)
+
+        pop ecx             // Przywróć licznik k
+        inc ecx             // k++
+        jmp Loop_k
+    EndLoop_k:
+
+        inc edi             // j++
+        jmp InnerLoop_j
+    EndInnerLoop_j:
+
+        // Wydrukuj nową linię po każdym wierszu komórek
+        mov eax, 0Ah        // '\n' (ASCII 10)
+        push eax
+        call putchar
+        add esp, 4
+
+        inc esi             // i++
+        jmp OuterLoop_i
+    EndOuterLoop_i:
+
+        // Przywróć rejestry callee-saved
+        pop edi
+        pop esi
+        pop ebx
+    }
+    cout << endl; // Dodatkowa nowa linia po całym wzorze
+    // Koniec kodu przeniesionego z funkcji drawPattern
+
+    // Kod generujący ciąg Fibonacciego zostanie zmodyfikowany poniżej
+    cout << "--- Generator ciagu Fibonacciego (ASM) ---" << endl; // Zaktualizowany komentarz
+
+    int fibLength; 
+    fibLength = getValidatedInput<int>("Podaj dlugosc ciagu Fibonacciego: ");
+
+    if (fibLength <= 0) {
+        cout << "Dlugosc musi byc wieksza od 0!" << endl;
+    } else {
+        long long* fibonacciNumbers = new long long[fibLength]; // Alokacja pamięci
+
+        __asm {
+            push esi
+            push edi
+            push ebx
+
+            mov edi, [fibonacciNumbers] // Wskaźnik na początek tablicy fibonacciNumbers
+            mov ecx, [fibLength]        // Długość ciągu w ecx
+
+            // Jeśli fibLength == 0, nic nie rób (obsłużone przez C++ if)
+            // Jeśli fibLength >= 1, ustaw F[0] = 0
+            cmp ecx, 1
+            jl SkipAllFib           // Mniejsze niż 1 (czyli 0), pomiń wszystko
+            
+            // Ustaw fibonacciNumbers[0] = 0
+            mov dword ptr [edi], 0      // F[0] dolna część
+            mov dword ptr [edi+4], 0    // F[0] górna część
+
+            // Jeśli fibLength >= 2, ustaw F[1] = 1
+            cmp ecx, 2
+            jl DoneFibGen           // Mniejsze niż 2 (czyli fibLength == 1), zakończ po F[0]
+
+            // Ustaw fibonacciNumbers[1] = 1
+            mov dword ptr [edi+8], 1    // F[1] dolna część
+            mov dword ptr [edi+12], 0   // F[1] górna część
+
+            // Jeśli fibLength <= 2, generowanie zakończone (F[0] i F[1] są ustawione)
+            cmp ecx, 2
+            jle DoneFibGen          // Mniejsze lub równe 2, zakończ
+
+            // Główna pętla: i od 2 do fibLength - 1
+            // esi będzie wskaźnikiem na element F[i] (element do obliczenia)
+            // Pętla wykona się fibLength - 2 razy.
+            
+            lea esi, [edi + 16]         // esi wskazuje na adres fibonacciNumbers[2]
+            sub ecx, 2                  // ecx = licznik pozostałych elementów do obliczenia (fibLength - 2)
+
+        FibLoop_asm:
+            // Oblicz F[i] = F[i-1] + F[i-2]
+            // Aktualnie esi wskazuje na miejsce dla F[i]
+            // F[i-1] jest pod [esi-8]
+            // F[i-2] jest pod [esi-16]
+
+            mov eax, dword ptr [esi-16] // F[i-2] dolna część
+            mov edx, dword ptr [esi-12] // F[i-2] górna część
+
+            add eax, dword ptr [esi-8]  // Dodaj F[i-1] dolna część
+            adc edx, dword ptr [esi-4]  // Dodaj F[i-1] górna część (z przeniesieniem)
+
+            mov dword ptr [esi], eax    // Zapisz F[i] dolna część
+            mov dword ptr [esi+4], edx  // Zapisz F[i] górna część
+
+            add esi, 8                  // Przesuń wskaźnik esi na miejsce dla następnego elementu F[i+1]
+            dec ecx
+            jnz FibLoop_asm             // Kontynuuj, jeśli licznik (pozostałych elementów) nie jest zerowy
+
+        DoneFibGen:
+            // Etykieta docelowa po zakończeniu generowania lub obsłużeniu przypadków specjalnych
+        SkipAllFib:
+            // Etykieta do pominięcia całej logiki ASM, jeśli fibLength <= 0 (chociaż C++ if to łapie)
+
+            pop ebx
+            pop edi
+            pop esi
+        }
+
+        // Wyświetl wyniki (C++)
+        cout << "\nCiag Fibonacciego (" << fibLength << " elementow wygenerowanych przez ASM):" << endl;
+        for (int i = 0; i < fibLength; i++) {
+            cout << "F(" << i << ") = " << fibonacciNumbers[i] << endl;
+        }
+
+        cout << "\nTablica zawiera " << fibLength << " liczb Fibonacciego." << endl << endl;
+        
+        delete[] fibonacciNumbers; // Zwolnienie pamięci
+    }
+    // Koniec kodu dla generatora Fibonacciego
 
     return 0;
 }
