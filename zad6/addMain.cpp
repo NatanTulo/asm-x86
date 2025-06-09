@@ -1,12 +1,12 @@
 #include <iostream>
-#include <string> // Dodano dla std::string i std::getline
-#include <limits> // Dodano dla std::numeric_limits
-#include <cstring> // Dodano dla strcpy
-#include <chrono> // Dodano dla pomiaru czasu
-#include <iomanip> // Dodano dla formatowania wyjścia
+#include <string> 
+#include <limits> 
+#include <cstring> 
+#include <chrono> 
+#include <iomanip> 
 #include <cctype>
 #include <vector>
-#include <cstdio> // Dodano dla putchar
+#include <cstdio> 
 
 using namespace std;
 using namespace std::chrono;
@@ -267,7 +267,7 @@ int main()
     cout << "\n--- Twoj wzor ---" << endl;
 
     __asm {
-        // Zapisz rejestry callee-saved, które będą modyfikowane
+        // Zapisz rejestry, które będą modyfikowane
         push ebx
         push esi
         push edi
@@ -323,7 +323,7 @@ int main()
         mov eax, edx        // distanceFromEdge = dist_j (w eax)
         jmp dist_Edge_done
     dist_Edge_is_dist_i:
-        // distanceFromEdge = dist_i (już w eax)
+        // distanceFromEdge = dist_i (w eax)
     dist_Edge_done:
         // eax przechowuje distanceFromEdge
 
@@ -378,10 +378,10 @@ int main()
         pop ebx
     }
     cout << endl; // Dodatkowa nowa linia po całym wzorze
-    // Koniec kodu przeniesionego z funkcji drawPattern
+    // Koniec rysowania wzoru
 
-    // Kod generujący ciąg Fibonacciego zostanie zmodyfikowany poniżej
-    cout << "--- Generator ciagu Fibonacciego (ASM) ---" << endl; // Zaktualizowany komentarz
+    // Kod generujący ciąg Fibonacciego
+    cout << "--- Generator ciagu Fibonacciego (ASM) ---" << endl; 
 
     int fibLength; 
     fibLength = getValidatedInput<int>("Podaj dlugosc ciagu Fibonacciego: ");
@@ -420,19 +420,12 @@ int main()
             cmp ecx, 2
             jle DoneFibGen          // Mniejsze lub równe 2, zakończ
 
-            // Główna pętla: i od 2 do fibLength - 1
-            // esi będzie wskaźnikiem na element F[i] (element do obliczenia)
-            // Pętla wykona się fibLength - 2 razy.
-            
-            lea esi, [edi + 16]         // esi wskazuje na adres fibonacciNumbers[2]
-            sub ecx, 2                  // ecx = licznik pozostałych elementów do obliczenia (fibLength - 2)
+            // Główna pętla
+            lea esi, [edi + 16]         
+            sub ecx, 2                  
 
         FibLoop_asm:
             // Oblicz F[i] = F[i-1] + F[i-2]
-            // Aktualnie esi wskazuje na miejsce dla F[i]
-            // F[i-1] jest pod [esi-8]
-            // F[i-2] jest pod [esi-16]
-
             mov eax, dword ptr [esi-16] // F[i-2] dolna część
             mov edx, dword ptr [esi-12] // F[i-2] górna część
 
@@ -442,21 +435,19 @@ int main()
             mov dword ptr [esi], eax    // Zapisz F[i] dolna część
             mov dword ptr [esi+4], edx  // Zapisz F[i] górna część
 
-            add esi, 8                  // Przesuń wskaźnik esi na miejsce dla następnego elementu F[i+1]
+            add esi, 8                  
             dec ecx
-            jnz FibLoop_asm             // Kontynuuj, jeśli licznik (pozostałych elementów) nie jest zerowy
+            jnz FibLoop_asm             
 
         DoneFibGen:
-            // Etykieta docelowa po zakończeniu generowania lub obsłużeniu przypadków specjalnych
         SkipAllFib:
-            // Etykieta do pominięcia całej logiki ASM, jeśli fibLength <= 0 (chociaż C++ if to łapie)
 
             pop ebx
             pop edi
             pop esi
         }
 
-        // Wyświetl wyniki (C++)
+        // Wyświetl wyniki
         cout << "\nCiag Fibonacciego (" << fibLength << " elementow wygenerowanych przez ASM):" << endl;
         for (int i = 0; i < fibLength; i++) {
             cout << "F(" << i << ") = " << fibonacciNumbers[i] << endl;
@@ -464,9 +455,9 @@ int main()
 
         cout << "\nTablica zawiera " << fibLength << " liczb Fibonacciego." << endl << endl;
         
-        delete[] fibonacciNumbers; // Zwolnienie pamięci
+        delete[] fibonacciNumbers; 
     }
-    // Koniec kodu dla generatora Fibonacciego
+    // Koniec generatora Fibonacciego
 
     return 0;
 }
