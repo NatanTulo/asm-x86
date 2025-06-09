@@ -96,6 +96,74 @@ string filterLettersOnly(const string& input) {
     return result;
 }
 
+// Funkcja do konwersji systemu dziesiętnego na inny system (2-16) z użyciem ASM
+void convertDecimalToBase(unsigned int decimal, int targetBase, char* result) {
+    if (targetBase < 2 || targetBase > 16) {
+        strcpy(result, "ERROR");
+        return;
+    }
+
+    if (decimal == 0) {
+        strcpy(result, "0");
+        return;
+    }
+
+    char digits[] = "0123456789ABCDEF";
+    char tempBuffer[33]; // Maksymalnie 32 znaki dla liczby binarnej + '\0'
+    int index = 0;
+
+    __asm {
+        push eax
+        push ebx
+        push ecx
+        push edx
+        push esi
+        push edi
+
+        mov eax, [decimal]      // Liczba do konwersji
+        mov ebx, [targetBase]   // Podstawa systemu docelowego
+        lea edi, [tempBuffer]   // Wskaźnik na bufor tymczasowy
+        mov ecx, 0              // Licznik cyfr
+
+        ConvertLoop:
+        test eax, eax           // Sprawdź czy liczba = 0
+            jz ConvertDone
+
+            xor edx, edx            // Wyczyść edx przed dzieleniem
+            div ebx                 // eax = eax / ebx, edx = reszta
+
+            push eax                // Zachowaj wynik dzielenia
+
+            // Znajdź odpowiedni znak dla reszty
+            lea esi, [digits]       // Wskaźnik na tablicę znaków
+            add esi, edx            // Przejdź do odpowiedniego znaku
+            mov dl, byte ptr[esi]  // Wczytaj znak
+            mov byte ptr[edi + ecx], dl  // Zapisz znak w buforze
+
+            pop eax                 // Przywróć wynik dzielenia
+            inc ecx                 // Zwiększ licznik cyfr
+            jmp ConvertLoop
+
+            ConvertDone :
+        mov[index], ecx        // Zapisz liczbę cyfr
+
+            pop edi
+            pop esi
+            pop edx
+            pop ecx
+            pop ebx
+            pop eax
+    }
+
+    // Odwróć kolejność cyfr (są zapisane od tyłu)
+    for (int i = 0; i < index; i++) {
+        result[i] = tempBuffer[index - 1 - i];
+    }
+    result[index] = '\0';
+}
+
+
+
 int main()
 {
     // Analiza częstotliwości znaków w łańcuchu
@@ -108,11 +176,12 @@ int main()
 
     if (lettersOnlyForFrequency.empty()) {
         cout << "Nie wprowadzono zadnych liter do analizy!" << endl << endl;
-    } else {
+    }
+    else {
         cout << "Wprowadzony lancuch: \"" << userInputString << "\"" << endl;
         cout << "Lancuch po filtracji (tylko litery): \"" << lettersOnlyForFrequency << "\"" << endl;
 
-        int charFrequencies[26] = {0}; // Tablica na liczniki dla a-z
+        int charFrequencies[26] = { 0 }; // Tablica na liczniki dla a-z
         count_char_frequencies_asm(lettersOnlyForFrequency.c_str(), charFrequencies);
 
         cout << "Czestotliwosc wystepowania liter (a-z, bez rozrozniania wielkosci):" << endl;
@@ -210,31 +279,31 @@ int main()
         push   edi
 
         // Oblicz koszt biletów dla dorosłych
-        mov    eax, [adults]       ; adultCount
+        mov    eax, [adults]; adultCount
         mov    ebx, [ADULT_TICKET_PRICE]
-        mul    ebx                 ; eax = adultCount * ADULT_TICKET_PRICE
-        mov    esi, eax            ; esi = adultsCost
+        mul    ebx; eax = adultCount * ADULT_TICKET_PRICE
+        mov    esi, eax; esi = adultsCost
 
         // Oblicz koszt biletów dla dzieci
-        mov    eax, [children]     ; childCount
+        mov    eax, [children]; childCount
         mov    ebx, [CHILD_TICKET_PRICE]
-        mul    ebx                 ; eax = childCount * CHILD_TICKET_PRICE
-        mov    edi, eax            ; edi = childrenCost
+        mul    ebx; eax = childCount * CHILD_TICKET_PRICE
+        mov    edi, eax; edi = childrenCost
 
         // Suma kosztów przed zniżką
-        add    esi, edi            ; esi = totalCostBeforeDiscount (esi = adultsCost + childrenCost)
+        add    esi, edi; esi = totalCostBeforeDiscount(esi = adultsCost + childrenCost)
 
         // Oblicz kwotę zniżki
-        mov    eax, esi            ; eax = totalCostBeforeDiscount
-        mov    ebx, [discount]     ; discountPercentage
-        mul    ebx                 ; edx:eax = totalCostBeforeDiscount * discountPercentage
+        mov    eax, esi; eax = totalCostBeforeDiscount
+        mov    ebx, [discount]; discountPercentage
+        mul    ebx; edx:eax = totalCostBeforeDiscount * discountPercentage
         mov    ecx, [HUNDRED]
-        div    ecx                 ; eax = (totalCostBeforeDiscount * discountPercentage) / HUNDRED (kwota zniżki)
-                                   ; edx = reszta (nieużywana)
+        div    ecx; eax = (totalCostBeforeDiscount * discountPercentage) / HUNDRED(kwota zniżki)
+        ; edx = reszta(nieużywana)
 
         // Ostateczna cena
-        sub    esi, eax            ; esi = totalCostBeforeDiscount - discountAmount
-        mov    [ticketPrice], esi  ; Zapisz ostateczną cenę do zmiennej C++
+        sub    esi, eax; esi = totalCostBeforeDiscount - discountAmount
+        mov[ticketPrice], esi; Zapisz ostateczną cenę do zmiennej C++
 
         pop    edi
         pop    esi
@@ -255,16 +324,59 @@ int main()
 
     //*****************************************************
 
+    // NOWY KALKULATOR SYSTEMÓW LICZBOWYCH
+    cout << "--- Kalkulator konwersji z systemu dziesietnego ---" << endl;
+
+    unsigned int decimalNum;
+    int targetBase;
+    char result[33];
+    char continueChoice;
+
+    do {
+        decimalNum = getValidatedInput<unsigned int>("Podaj liczbe dziesietna do konwersji: ");
+
+        do {
+            targetBase = getValidatedInput<int>("Podaj docelowy system liczbowy (2-16): ");
+            if (targetBase < 2 || targetBase > 16) {
+                cout << "System musi byc w zakresie 2-16!" << endl;
+            }
+        } while (targetBase < 2 || targetBase > 16);
+
+        convertDecimalToBase(decimalNum, targetBase, result);
+
+        cout << "\n=== WYNIK KONWERSJI (ASM) ===" << endl;
+        cout << decimalNum << " (dziesietny) = " << result << " (system " << targetBase << ")" << endl;
+
+        // Dodatkowe informacje dla popularnych systemów
+        switch (targetBase) {
+        case 2:
+            cout << "System binarny - uzywany w informatyce" << endl;
+            break;
+        case 8:
+            cout << "System oktalny - rzadziej uzywany" << endl;
+            break;
+        case 16:
+            cout << "System szesnastkowy - popularny w programowaniu" << endl;
+            break;
+        }
+
+        continueChoice = getValidatedChar("\nChcesz wykonac kolejna konwersje? (t/n): ");
+        cout << endl;
+
+    } while (continueChoice == 't' || continueChoice == 'T');
+
+    //*****************************************************
+
     // Rysowanie wzoru
     int patternCellSize;
     char lightSymbol, darkSymbol;
 
-    cout << "--- Rysowanie wzoru ---" << endl;
+    cout << "\n--- Rysowanie wzoru ---" << endl;
     patternCellSize = getValidatedInput<int>("Podaj rozmiar boku wzoru (liczba komorek na bok): ");
     lightSymbol = getValidatedChar("Podaj znak jasny (np. '@'): ");
     darkSymbol = getValidatedChar("Podaj znak ciemny (np. '.'): ");
 
-    const int HORIZONTAL_CHAR_MULTIPLIER = 2; 
+    const int HORIZONTAL_CHAR_MULTIPLIER = 2;
     cout << "\n--- Twoj wzor ---" << endl;
 
     __asm {
@@ -279,51 +391,51 @@ int main()
         // ecx, eax, edx będą używane do obliczeń i jako liczniki/argumenty
 
         mov esi, 0          // i = 0
-    OuterLoop_i:
+        OuterLoop_i:
         cmp esi, [patternCellSize]   // if (i >= patternCellSize) goto EndOuterLoop_i
-        jge EndOuterLoop_i
+            jge EndOuterLoop_i
 
-        mov edi, 0          // j = 0
-    InnerLoop_j:
-        cmp edi, [patternCellSize]   // if (j >= patternCellSize) goto EndInnerLoop_j
-        jge EndInnerLoop_j
+            mov edi, 0          // j = 0
+            InnerLoop_j :
+            cmp edi, [patternCellSize]   // if (j >= patternCellSize) goto EndInnerLoop_j
+            jge EndInnerLoop_j
 
-        // Oblicz dist_i = min(i, patternCellSize - 1 - i)
-        mov eax, [patternCellSize]
-        dec eax
-        sub eax, esi        // eax = patternCellSize - 1 - i
-        mov ebx, esi        // ebx = i
-        cmp ebx, eax        // Compare i with (patternCellSize - 1 - i)
-        jle dist_i_is_i     // if i <= (patternCellSize - 1 - i), then dist_i = i
-        mov ecx, eax        // else dist_i = (patternCellSize - 1 - i)
-        jmp dist_i_done
-    dist_i_is_i:
+            // Oblicz dist_i = min(i, patternCellSize - 1 - i)
+            mov eax, [patternCellSize]
+            dec eax
+            sub eax, esi        // eax = patternCellSize - 1 - i
+            mov ebx, esi        // ebx = i
+            cmp ebx, eax        // Compare i with (patternCellSize - 1 - i)
+            jle dist_i_is_i     // if i <= (patternCellSize - 1 - i), then dist_i = i
+            mov ecx, eax        // else dist_i = (patternCellSize - 1 - i)
+            jmp dist_i_done
+            dist_i_is_i :
         mov ecx, ebx        // dist_i = i
-    dist_i_done:
+            dist_i_done :
         // ecx przechowuje dist_i
 
         // Oblicz dist_j = min(j, patternCellSize - 1 - j)
         mov eax, [patternCellSize]
-        dec eax
-        sub eax, edi        // eax = patternCellSize - 1 - j
-        mov ebx, edi        // ebx = j
-        cmp ebx, eax        // Compare j with (patternCellSize - 1 - j)
-        jle dist_j_is_j     // if j <= (patternCellSize - 1 - j), then dist_j = j
-        mov edx, eax        // else dist_j = (patternCellSize - 1 - j)
-        jmp dist_j_done
-    dist_j_is_j:
+            dec eax
+            sub eax, edi        // eax = patternCellSize - 1 - j
+            mov ebx, edi        // ebx = j
+            cmp ebx, eax        // Compare j with (patternCellSize - 1 - j)
+            jle dist_j_is_j     // if j <= (patternCellSize - 1 - j), then dist_j = j
+            mov edx, eax        // else dist_j = (patternCellSize - 1 - j)
+            jmp dist_j_done
+            dist_j_is_j :
         mov edx, ebx        // dist_j = j
-    dist_j_done:
+            dist_j_done :
         // edx przechowuje dist_j
 
         // Oblicz distanceFromEdge = min(dist_i, dist_j)
         // dist_i jest w ecx, dist_j jest w edx
         mov eax, ecx        // eax = dist_i
-        cmp eax, edx        // if (dist_i <= dist_j)
-        jle dist_Edge_is_dist_i
-        mov eax, edx        // distanceFromEdge = dist_j (w eax)
-        jmp dist_Edge_done
-    dist_Edge_is_dist_i:
+            cmp eax, edx        // if (dist_i <= dist_j)
+            jle dist_Edge_is_dist_i
+            mov eax, edx        // distanceFromEdge = dist_j (w eax)
+            jmp dist_Edge_done
+            dist_Edge_is_dist_i :
         // distanceFromEdge = dist_i (w eax)
     dist_Edge_done:
         // eax przechowuje distanceFromEdge
@@ -331,66 +443,67 @@ int main()
         // Wybierz charToPrint na podstawie parzystości distanceFromEdge
         // (distanceFromEdge % 2 == 0) -> test najmłodszego bitu eax
         test eax, 1
-        jnz IsOdd           // Jeśli nie zero (nieparzyste), skocz do IsOdd
-        // Parzyste: charToPrint = lightSymbol
-        mov bl, byte ptr [lightSymbol] 
-        jmp PrintCharLoopSetup
-    IsOdd:
+            jnz IsOdd           // Jeśli nie zero (nieparzyste), skocz do IsOdd
+            // Parzyste: charToPrint = lightSymbol
+            mov bl, byte ptr[lightSymbol]
+            jmp PrintCharLoopSetup
+            IsOdd :
         // Nieparzyste: charToPrint = darkSymbol
-        mov bl, byte ptr [darkSymbol]
+        mov bl, byte ptr[darkSymbol]
 
-    PrintCharLoopSetup:
-        // Wydrukuj charToPrint (w bl) HORIZONTAL_CHAR_MULTIPLIER razy
-        mov ecx, 0          // licznik k = 0
-    Loop_k:
-        cmp ecx, HORIZONTAL_CHAR_MULTIPLIER
-        jge EndLoop_k
+            PrintCharLoopSetup :
+            // Wydrukuj charToPrint (w bl) HORIZONTAL_CHAR_MULTIPLIER razy
+            mov ecx, 0          // licznik k = 0
+            Loop_k :
+            cmp ecx, HORIZONTAL_CHAR_MULTIPLIER
+            jge EndLoop_k
 
-        // Zapisz ecx (licznik k), ponieważ putchar może go zmienić
-        push ecx
+            // Zapisz ecx (licznik k), ponieważ putchar może go zmienić
+            push ecx
 
-        movzx eax, bl       // Rozszerz charToPrint (bl) do eax jako argument dla putchar
-        push eax            // Przekaż argument na stos
-        call putchar
-        add esp, 4          // Zdejmij argument ze stosu (konwencja __cdecl)
+            movzx eax, bl       // Rozszerz charToPrint (bl) do eax jako argument dla putchar
+            push eax            // Przekaż argument na stos
+            call putchar
+            add esp, 4          // Zdejmij argument ze stosu (konwencja __cdecl)
 
-        pop ecx             // Przywróć licznik k
-        inc ecx             // k++
-        jmp Loop_k
-    EndLoop_k:
+            pop ecx             // Przywróć licznik k
+            inc ecx             // k++
+            jmp Loop_k
+            EndLoop_k :
 
         inc edi             // j++
-        jmp InnerLoop_j
-    EndInnerLoop_j:
+            jmp InnerLoop_j
+            EndInnerLoop_j :
 
         // Wydrukuj nową linię po każdym wierszu komórek
         mov eax, 0Ah        // '\n' (ASCII 10)
-        push eax
-        call putchar
-        add esp, 4
+            push eax
+            call putchar
+            add esp, 4
 
-        inc esi             // i++
-        jmp OuterLoop_i
-    EndOuterLoop_i:
+            inc esi             // i++
+            jmp OuterLoop_i
+            EndOuterLoop_i :
 
         // Przywróć rejestry callee-saved
         pop edi
-        pop esi
-        pop ebx
+            pop esi
+            pop ebx
     }
     cout << endl; // Dodatkowa nowa linia po całym wzorze
-    
+
     //*****************************************************
 
     // Kod generujący ciąg Fibonacciego
-    cout << "--- Generator ciagu Fibonacciego ---" << endl; 
+    cout << "--- Generator ciagu Fibonacciego ---" << endl;
 
-    int fibLength; 
+    int fibLength;
     fibLength = getValidatedInput<int>("Podaj dlugosc ciagu Fibonacciego: ");
 
     if (fibLength <= 0) {
         cout << "Dlugosc musi byc wieksza od 0!" << endl;
-    } else {
+    }
+    else {
         long long* fibonacciNumbers = new long long[fibLength]; // Alokacja pamięci
 
         __asm {
@@ -405,48 +518,48 @@ int main()
             // Jeśli fibLength >= 1, ustaw F[0] = 0
             cmp ecx, 1
             jl SkipAllFib           // Mniejsze niż 1 (czyli 0), pomiń wszystko
-            
+
             // Ustaw fibonacciNumbers[0] = 0
-            mov dword ptr [edi], 0      // F[0] dolna część
-            mov dword ptr [edi+4], 0    // F[0] górna część
+            mov dword ptr[edi], 0      // F[0] dolna część
+            mov dword ptr[edi + 4], 0    // F[0] górna część
 
             // Jeśli fibLength >= 2, ustaw F[1] = 1
             cmp ecx, 2
             jl DoneFibGen           // Mniejsze niż 2 (czyli fibLength == 1), zakończ po F[0]
 
             // Ustaw fibonacciNumbers[1] = 1
-            mov dword ptr [edi+8], 1    // F[1] dolna część
-            mov dword ptr [edi+12], 0   // F[1] górna część
+            mov dword ptr[edi + 8], 1    // F[1] dolna część
+            mov dword ptr[edi + 12], 0   // F[1] górna część
 
             // Jeśli fibLength <= 2, generowanie zakończone (F[0] i F[1] są ustawione)
             cmp ecx, 2
             jle DoneFibGen          // Mniejsze lub równe 2, zakończ
 
             // Główna pętla
-            lea esi, [edi + 16]         
-            sub ecx, 2                  
+            lea esi, [edi + 16]
+            sub ecx, 2
 
-        FibLoop_asm:
+            FibLoop_asm:
             // Oblicz F[i] = F[i-1] + F[i-2]
-            mov eax, dword ptr [esi-16] // F[i-2] dolna część
-            mov edx, dword ptr [esi-12] // F[i-2] górna część
+            mov eax, dword ptr[esi - 16] // F[i-2] dolna część
+                mov edx, dword ptr[esi - 12] // F[i-2] górna część
 
-            add eax, dword ptr [esi-8]  // Dodaj F[i-1] dolna część
-            adc edx, dword ptr [esi-4]  // Dodaj F[i-1] górna część (z przeniesieniem)
+                add eax, dword ptr[esi - 8]  // Dodaj F[i-1] dolna część
+                adc edx, dword ptr[esi - 4]  // Dodaj F[i-1] górna część (z przeniesieniem)
 
-            mov dword ptr [esi], eax    // Zapisz F[i] dolna część
-            mov dword ptr [esi+4], edx  // Zapisz F[i] górna część
+                mov dword ptr[esi], eax    // Zapisz F[i] dolna część
+                mov dword ptr[esi + 4], edx  // Zapisz F[i] górna część
 
-            add esi, 8                  
-            dec ecx
-            jnz FibLoop_asm             
+                add esi, 8
+                dec ecx
+                jnz FibLoop_asm
 
-        DoneFibGen:
+                DoneFibGen :
         SkipAllFib:
 
             pop ebx
-            pop edi
-            pop esi
+                pop edi
+                pop esi
         }
 
         // Wyświetl wyniki
@@ -456,8 +569,8 @@ int main()
         }
 
         cout << "\nTablica zawiera " << fibLength << " liczb Fibonacciego." << endl << endl;
-        
-        delete[] fibonacciNumbers; 
+
+        delete[] fibonacciNumbers;
     }
     // Koniec generatora Fibonacciego
 
