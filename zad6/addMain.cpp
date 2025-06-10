@@ -13,6 +13,7 @@ using namespace std::chrono;
 
 extern "C" void count_char_frequencies_asm(const char* str, int* frequencies); // Zlicza częstotliwość liter w str (tylko litery a-z, case-insensitive)
 extern "C" void bubble_sort(char* array, int length);  // sortuje tablicę znaków bąbelkowo
+extern "C" int convert_to_base(unsigned int number, int base, char* result); // konwertuje liczbę na dowolny system liczbowy
 
 // Szablon funkcji do pobierania i walidowania danych numerycznych
 template <typename T>
@@ -96,74 +97,6 @@ string filterLettersOnly(const string& input) {
     return result;
 }
 
-// Funkcja do konwersji systemu dziesiętnego na inny system (2-16) z użyciem ASM
-void convertDecimalToBase(unsigned int decimal, int targetBase, char* result) {
-    if (targetBase < 2 || targetBase > 16) {
-        strcpy(result, "ERROR");
-        return;
-    }
-
-    if (decimal == 0) {
-        strcpy(result, "0");
-        return;
-    }
-
-    char digits[] = "0123456789ABCDEF";
-    char tempBuffer[33]; // Maksymalnie 32 znaki dla liczby binarnej + '\0'
-    int index = 0;
-
-    __asm {
-        push eax
-        push ebx
-        push ecx
-        push edx
-        push esi
-        push edi
-
-        mov eax, [decimal]      // Liczba do konwersji
-        mov ebx, [targetBase]   // Podstawa systemu docelowego
-        lea edi, [tempBuffer]   // Wskaźnik na bufor tymczasowy
-        mov ecx, 0              // Licznik cyfr
-
-        ConvertLoop:
-        test eax, eax           // Sprawdź czy liczba = 0
-            jz ConvertDone
-
-            xor edx, edx            // Wyczyść edx przed dzieleniem
-            div ebx                 // eax = eax / ebx, edx = reszta
-
-            push eax                // Zachowaj wynik dzielenia
-
-            // Znajdź odpowiedni znak dla reszty
-            lea esi, [digits]       // Wskaźnik na tablicę znaków
-            add esi, edx            // Przejdź do odpowiedniego znaku
-            mov dl, byte ptr[esi]  // Wczytaj znak
-            mov byte ptr[edi + ecx], dl  // Zapisz znak w buforze
-
-            pop eax                 // Przywróć wynik dzielenia
-            inc ecx                 // Zwiększ licznik cyfr
-            jmp ConvertLoop
-
-            ConvertDone :
-        mov[index], ecx        // Zapisz liczbę cyfr
-
-            pop edi
-            pop esi
-            pop edx
-            pop ecx
-            pop ebx
-            pop eax
-    }
-
-    // Odwróć kolejność cyfr (są zapisane od tyłu)
-    for (int i = 0; i < index; i++) {
-        result[i] = tempBuffer[index - 1 - i];
-    }
-    result[index] = '\0';
-}
-
-
-
 int main()
 {
     // Analiza częstotliwości znaków w łańcuchu
@@ -201,7 +134,7 @@ int main()
     //*****************************************************
 
     // Sortowanie alfabetyczne - porównanie ASM vs C++
-    cout << "--- Porownanie sortowania ASM vs C++ ---" << endl;
+    cout << "--- Sortowanie babelkowe ---" << endl;
     cout << "Podaj tekst do posortowania: ";
     string textToSort;
     getline(cin, textToSort);
@@ -221,36 +154,36 @@ int main()
         char* sortData = new char[lettersOnly.length() + 1];
         strcpy(sortData, lettersOnly.c_str());
 
-        cout << "=== POROWNANIE WYDAJNOSCI SORTOWANIA ===" << endl;
 
         // Test sortowania ASM
         double asmTime = measureSortTime(bubble_sort, sortData, static_cast<int>(lettersOnly.length()), "ASM Bubble Sort");
         cout << endl;
 
-        // Test sortowania C++
-        double cppTime = measureSortTime(bubble_sort_cpp, sortData, static_cast<int>(lettersOnly.length()), "C++ Bubble Sort");
-        cout << endl;
-
-        // Analiza wyników
-        cout << "=== ANALIZA WYNIKOW ===" << endl;
-        if (asmTime < cppTime) {
-            double speedup = cppTime / asmTime;
-            cout << "ASM jest szybsze o " << fixed << setprecision(2) << speedup << "x" << endl;
-        }
-        else if (cppTime < asmTime) {
-            double speedup = asmTime / cppTime;
-            cout << "C++ jest szybsze o " << fixed << setprecision(2) << speedup << "x" << endl;
-        }
-        else {
-            cout << "Oba algorytmy maja podobna wydajnosc" << endl;
-        }
-
-        cout << "Roznica czasowa: " << fixed << setprecision(2)
-            << abs(asmTime - cppTime) << " mikrosekund" << endl << endl;
-
         // Zwolnij pamięć
         delete[] sortData;
     }
+
+    //*****************************************************
+
+    cout << "--- Konwersja systemu liczbowego ---" << endl;
+
+    unsigned int numberToConvert = getValidatedInput<unsigned int>("Podaj liczbe do konwersji (0-4294967295): ");
+
+    int targetBase;
+    do {
+        targetBase = getValidatedInput<int>("Podaj docelowy system liczbowy (2-16): ");
+        if (targetBase < 2 || targetBase > 16) {
+            cout << "Niepoprawna podstawa! Dozwolone wartosci: 2-16" << endl;
+        }
+    } while (targetBase < 2 || targetBase > 16);
+
+    char result[64]; // Bufor na wynik (64 znaki wystarczy dla największych liczb)
+    int resultLength = convert_to_base(numberToConvert, targetBase, result);
+
+    cout << "\n=== WYNIK KONWERSJI ===" << endl;
+    cout << "Liczba " << numberToConvert << " (system dziesietny)" << endl;
+    cout << "w systemie " << targetBase << "-kowym to: " << result << endl;
+    cout << endl;
 
     //*****************************************************
 
@@ -324,54 +257,11 @@ int main()
 
     //*****************************************************
 
-    // NOWY KALKULATOR SYSTEMÓW LICZBOWYCH
-    cout << "--- Kalkulator konwersji z systemu dziesietnego ---" << endl;
-
-    unsigned int decimalNum;
-    int targetBase;
-    char result[33];
-    char continueChoice;
-
-    do {
-        decimalNum = getValidatedInput<unsigned int>("Podaj liczbe dziesietna do konwersji: ");
-
-        do {
-            targetBase = getValidatedInput<int>("Podaj docelowy system liczbowy (2-16): ");
-            if (targetBase < 2 || targetBase > 16) {
-                cout << "System musi byc w zakresie 2-16!" << endl;
-            }
-        } while (targetBase < 2 || targetBase > 16);
-
-        convertDecimalToBase(decimalNum, targetBase, result);
-
-        cout << "\n=== WYNIK KONWERSJI (ASM) ===" << endl;
-        cout << decimalNum << " (dziesietny) = " << result << " (system " << targetBase << ")" << endl;
-
-        // Dodatkowe informacje dla popularnych systemów
-        switch (targetBase) {
-        case 2:
-            cout << "System binarny - uzywany w informatyce" << endl;
-            break;
-        case 8:
-            cout << "System oktalny - rzadziej uzywany" << endl;
-            break;
-        case 16:
-            cout << "System szesnastkowy - popularny w programowaniu" << endl;
-            break;
-        }
-
-        continueChoice = getValidatedChar("\nChcesz wykonac kolejna konwersje? (t/n): ");
-        cout << endl;
-
-    } while (continueChoice == 't' || continueChoice == 'T');
-
-    //*****************************************************
-
     // Rysowanie wzoru
     int patternCellSize;
     char lightSymbol, darkSymbol;
 
-    cout << "\n--- Rysowanie wzoru ---" << endl;
+    cout << "--- Rysowanie wzoru ---" << endl;
     patternCellSize = getValidatedInput<int>("Podaj rozmiar boku wzoru (liczba komorek na bok): ");
     lightSymbol = getValidatedChar("Podaj znak jasny (np. '@'): ");
     darkSymbol = getValidatedChar("Podaj znak ciemny (np. '.'): ");
