@@ -134,7 +134,7 @@ int main()
     //*****************************************************
 
     // Sortowanie alfabetyczne - porównanie ASM vs C++
-    cout << "--- Sortowanie babelkowe ---" << endl;
+    cout << "--- Porownanie sortowania ASM vs C++ ---" << endl;
     cout << "Podaj tekst do posortowania: ";
     string textToSort;
     getline(cin, textToSort);
@@ -154,10 +154,32 @@ int main()
         char* sortData = new char[lettersOnly.length() + 1];
         strcpy(sortData, lettersOnly.c_str());
 
+        cout << "=== POROWNANIE WYDAJNOSCI SORTOWANIA ===" << endl;
 
         // Test sortowania ASM
         double asmTime = measureSortTime(bubble_sort, sortData, static_cast<int>(lettersOnly.length()), "ASM Bubble Sort");
         cout << endl;
+
+        // Test sortowania C++
+        double cppTime = measureSortTime(bubble_sort_cpp, sortData, static_cast<int>(lettersOnly.length()), "C++ Bubble Sort");
+        cout << endl;
+
+        // Analiza wyników
+        cout << "=== ANALIZA WYNIKOW ===" << endl;
+        if (asmTime < cppTime) {
+            double speedup = cppTime / asmTime;
+            cout << "ASM jest szybsze o " << fixed << setprecision(2) << speedup << "x" << endl;
+        }
+        else if (cppTime < asmTime) {
+            double speedup = asmTime / cppTime;
+            cout << "C++ jest szybsze o " << fixed << setprecision(2) << speedup << "x" << endl;
+        }
+        else {
+            cout << "Oba algorytmy maja podobna wydajnosc" << endl;
+        }
+
+        cout << "Roznica czasowa: " << fixed << setprecision(2)
+            << abs(asmTime - cppTime) << " mikrosekund" << endl << endl;
 
         // Zwolnij pamięć
         delete[] sortData;

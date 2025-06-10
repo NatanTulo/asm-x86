@@ -55,7 +55,7 @@ inner_loop:
     call to_upper_al
     call to_upper_ah
     
-    cmp al, ah          ; porownaj skonwertowane znaki
+    cmp al, ah          ; porównaj skonwertowane znaki
     pop eax             ; przywróć oryginalne wartości
     jle no_swap         ; jeśli al <= ah, nie zamieniaj
     

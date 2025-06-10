@@ -1,5 +1,5 @@
 ; number_conversion.asm
-; Funkcja konwertuj¹ca liczbê dziesiêtn¹ na dowolny system liczbowy (2-16)
+; Funkcja konwertujÄ…ca liczbÄ™ dziesiÄ™tnÄ… na dowolny system liczbowy (2-16)
 ; Kompatybilna z Visual C++ (32-bit)
 
 .386P
@@ -11,8 +11,8 @@ public _convert_to_base
 ; Argumenty: 
 ;   [ebp+8]  = liczba do konwersji (unsigned int)
 ;   [ebp+12] = podstawa systemu (2-16)
-;   [ebp+16] = wskaŸnik do bufora wynikowego (char*)
-; Zwraca: d³ugoœæ wyniku (int)
+;   [ebp+16] = wskaÅºnik do bufora wynikowego (char*)
+; Zwraca: dÅ‚ugoÅ›Ä‡ wyniku (int)
 _convert_to_base proc near
     push ebp
     mov ebp, esp
@@ -25,35 +25,35 @@ _convert_to_base proc near
 
     mov eax, [ebp+8]        ; liczba do konwersji
     mov ebx, [ebp+12]       ; podstawa systemu
-    mov edi, [ebp+16]       ; wskaŸnik do bufora wynikowego
+    mov edi, [ebp+16]       ; wskaÅºnik do bufora wynikowego
     
-    ; SprawdŸ poprawnoœæ podstawy (2-16)
+    ; SprawdÅº poprawnoÅ›Ä‡ podstawy (2-16)
     cmp ebx, 2
     jb invalid_base
     cmp ebx, 16
     ja invalid_base
     
-    ; SprawdŸ czy liczba to 0
+    ; SprawdÅº czy liczba to 0
     cmp eax, 0
     jne convert_loop_start
     
-    ; Jeœli liczba to 0, zwróæ "0"
+    ; JeÅ›li liczba to 0, zwrÃ³Ä‡ "0"
     mov byte ptr [edi], '0'
     mov byte ptr [edi+1], 0     ; null terminator
-    mov eax, 1                  ; d³ugoœæ = 1
+    mov eax, 1                  ; dÅ‚ugoÅ›Ä‡ = 1
     jmp conversion_end
     
 convert_loop_start:
     mov ecx, 0                  ; licznik cyfr na stosie
     
 convert_loop:
-    cmp eax, 0                  ; sprawdŸ czy liczba = 0
+    cmp eax, 0                  ; sprawdÅº czy liczba = 0
     je reverse_digits
     
-    mov edx, 0                  ; wyzeruj starsz¹ czêœæ dzielnej
-    div ebx                     ; dziel przez podstawê: eax = iloraz, edx = reszta
+    mov edx, 0                  ; wyzeruj starszÄ… czÄ™Å›Ä‡ dzielnej
+    div ebx                     ; dziel przez podstawÄ™: eax = iloraz, edx = reszta
     
-    ; Konwertuj resztê na znak
+    ; Konwertuj resztÄ™ na znak
     cmp edx, 9
     jle digit_0_9
     
@@ -66,31 +66,31 @@ digit_0_9:
     add edx, '0'
     
 push_digit:
-    push edx                    ; zapisz cyfrê na stosie
-    inc ecx                     ; zwiêksz licznik cyfr
+    push edx                    ; zapisz cyfrÄ™ na stosie
+    inc ecx                     ; zwiÄ™ksz licznik cyfr
     jmp convert_loop
     
 reverse_digits:
-    ; Pobierz cyfry ze stosu w odwrotnej kolejnoœci
+    ; Pobierz cyfry ze stosu w odwrotnej kolejnoÅ›ci
     mov esi, 0                  ; indeks w buforze wynikowym
     
 pop_loop:
     cmp ecx, 0
     je add_null_terminator
     
-    pop edx                     ; pobierz cyfrê ze stosu
+    pop edx                     ; pobierz cyfrÄ™ ze stosu
     mov [edi+esi], dl          ; zapisz do bufora
-    inc esi                     ; nastêpna pozycja
+    inc esi                     ; nastÄ™pna pozycja
     dec ecx                     ; zmniejsz licznik
     jmp pop_loop
     
 add_null_terminator:
     mov byte ptr [edi+esi], 0   ; dodaj null terminator
-    mov eax, esi                ; zwróæ d³ugoœæ wyniku
+    mov eax, esi                ; zwrÃ³Ä‡ dÅ‚ugoÅ›Ä‡ wyniku
     jmp conversion_end
     
 invalid_base:
-    ; Dla niepoprawnej podstawy zwróæ pusty string
+    ; Dla niepoprawnej podstawy zwrÃ³Ä‡ pusty string
     mov byte ptr [edi], 0
     mov eax, 0
     
